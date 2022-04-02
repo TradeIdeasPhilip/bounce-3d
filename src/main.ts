@@ -1,5 +1,7 @@
-import './style.css'
+import "./style.css";
 import * as THREE from "three";
+
+import { getById } from "../lib/client-misc";
 
 const canvas = document.querySelector("canvas")!;
 
@@ -12,7 +14,7 @@ const camera = new THREE.PerspectiveCamera(
 );
 (window as any).camera = camera;
 const renderer = new THREE.WebGLRenderer({
-  canvas
+  canvas,
 });
 
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -42,46 +44,44 @@ gridHelperTop.position.y = boxMax;
 scene.add(gridHelperTop);
 
 const gridHelperLeft = new THREE.GridHelper(boxSize, 3);
-gridHelperLeft.rotation.z = Math.PI/2;
+gridHelperLeft.rotation.z = Math.PI / 2;
 gridHelperLeft.position.x = boxMin;
 scene.add(gridHelperLeft);
 
 const gridHelperRight = new THREE.GridHelper(boxSize, 3);
-gridHelperRight.rotation.z = Math.PI/2;
+gridHelperRight.rotation.z = Math.PI / 2;
 gridHelperRight.position.x = boxMax;
 scene.add(gridHelperRight);
 
 const gridHelperBack = new THREE.GridHelper(boxSize, 3);
-gridHelperBack.rotation.x = Math.PI/2;
+gridHelperBack.rotation.x = Math.PI / 2;
 gridHelperBack.position.z = boxMin;
 //scene.add(gridHelperBack);
 
 const dimensions = ["x", "y", "z"] as const;
 
-const flashyWalls = 
-{
+const flashyWalls = {
   x: {
     min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc)
+    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
   },
   y: {
     min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc)
+    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
   },
   z: {
     min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc)
+    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
   },
 };
-flashyWalls.x.min.rotation.z = Math.PI/2;
-flashyWalls.x.max.rotation.z = Math.PI/2;
-flashyWalls.z.min.rotation.x = Math.PI/2;
-flashyWalls.z.max.rotation.x = Math.PI/2;
-dimensions.forEach(dimension => {
+flashyWalls.x.min.rotation.z = Math.PI / 2;
+flashyWalls.x.max.rotation.z = Math.PI / 2;
+flashyWalls.z.min.rotation.x = Math.PI / 2;
+flashyWalls.z.max.rotation.x = Math.PI / 2;
+dimensions.forEach((dimension) => {
   flashyWalls[dimension].min.position[dimension] = boxMin;
   flashyWalls[dimension].max.position[dimension] = boxMax;
 });
-
 
 // x=0 is currently in the center of the viewport.
 // Positive x moves to the right, negative x moves to the left, just like in algebra class.
@@ -101,15 +101,19 @@ function makeMarker(x = 0, y = 0, z = 0) {
 (window as any).makeMarker = makeMarker;
 
 const ball = makeMarker();
-const ballVelocity = { x: THREE.MathUtils.randFloatSpread(7), y: THREE.MathUtils.randFloatSpread(7), z:THREE.MathUtils.randFloatSpread(7)};
-let lastBallUpdate : number | undefined;
+const ballVelocity = {
+  x: THREE.MathUtils.randFloatSpread(7),
+  y: THREE.MathUtils.randFloatSpread(7),
+  z: THREE.MathUtils.randFloatSpread(7),
+};
+let lastBallUpdate: number | undefined;
 
 // The _center_ of the ball can _not_ go all the way to the wall.
 // Always reserve one ball radius.
 const ballMin = boxMin + 0.5;
 const ballMax = boxMax - 0.5;
 
-const wallTimeout = new Map<THREE.GridHelper, number>(); 
+const wallTimeout = new Map<THREE.GridHelper, number>();
 
 function updateBall(time: DOMHighResTimeStamp) {
   wallTimeout.forEach((timeout, wall) => {
@@ -128,14 +132,15 @@ function updateBall(time: DOMHighResTimeStamp) {
     }
     for (const dimension of dimensions) {
       let newValue = ball.position[dimension];
-      newValue = ball.position[dimension] + ballVelocity[dimension] * secondsPassed;
+      newValue =
+        ball.position[dimension] + ballVelocity[dimension] * secondsPassed;
       if (newValue < ballMin) {
         newValue = ballMin;
         ballVelocity[dimension] = Math.abs(ballVelocity[dimension]);
         const wall = flashyWalls[dimension].min;
         scene.add(wall);
         wallTimeout.set(wall, time + 100);
-      } else if(newValue > ballMax) {
+      } else if (newValue > ballMax) {
         newValue = ballMax;
         ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
         const wall = flashyWalls[dimension].max;
@@ -143,9 +148,9 @@ function updateBall(time: DOMHighResTimeStamp) {
         wallTimeout.set(wall, time + 100);
       }
       ball.position[dimension] = newValue;
-    }  
+    }
   }
-  lastBallUpdate = time; 
+  lastBallUpdate = time;
 }
 
 // Animation Loop
@@ -153,7 +158,7 @@ function updateBall(time: DOMHighResTimeStamp) {
 function animate(time: DOMHighResTimeStamp) {
   requestAnimationFrame(animate);
 
-updateBall(time);
+  updateBall(time);
 
   //controls.update();
 
@@ -170,3 +175,18 @@ updateBall(time);
   renderer.render(scene, camera);
 }
 requestAnimationFrame(animate);
+
+(
+  [
+    ["Left", "x", -1],
+    ["Right", "x", 1],
+    ["Down", "y", -1],
+    ["Up", "y", 1],
+    ["Away", "z", -1],
+    ["Toward", "z", 1],
+  ] as const
+).forEach(([name, dimension, delta]) => {
+  getById("nudge" + name, HTMLButtonElement).addEventListener("click", () => {
+    ballVelocity[dimension] += delta;
+  });
+});
