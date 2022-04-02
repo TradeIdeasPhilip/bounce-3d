@@ -21,3 +21,7 @@ For more info:  https://vitejs.dev/guide/#command-line-interface.
 
 ## Soundtrack
 [My balls are always bouncing.](https://www.youtube.com/watch?v=xPlqLHcphyw)
+
+## Known Issues
+* If the aspect ratio gets too wide, some or all of the controls are not visible.
+* The window should react better when someone resizes it.

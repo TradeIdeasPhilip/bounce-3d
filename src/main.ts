@@ -178,9 +178,17 @@ const cubeRect = getById("cubeRect", SVGRectElement);
 function showFovInSvg(fov : number) {
   const cameraX = 50;
   const cameraY = 95;
-  const fovRadius = 110;
   const fovInRadians = fov / 360 * 2 * Math.PI;
   const angleToEdge = fovInRadians/2;
+
+  const cubeSize = 35;
+  const cubeX = (100 - cubeSize) / 2;
+  cubeRect.setAttribute("x", cubeX.toString());
+  const fromCubeToCamera = cubeSize / Math.tan(angleToEdge) / 2;
+  const cubeY = cameraY - fromCubeToCamera - cubeSize;
+  cubeRect.setAttribute("y", cubeY.toString());
+
+  const fovRadius = Math.hypot(cameraX - cubeX, cameraY-cubeY) + cubeSize/10;
   const y = cameraY- Math.cos(angleToEdge) * fovRadius;
   const xOffset = Math.sin(angleToEdge) * fovRadius;
   const fromX = cameraX-xOffset;
@@ -191,12 +199,6 @@ function showFovInSvg(fov : number) {
   const sweepFlag = 1;
   fovPath.setAttribute("d", `M ${cameraX} ${cameraY} L ${fromX} ${y} A ${fovRadius} ${fovRadius} ${fov} ${largeArcFlag} ${sweepFlag} ${toX} ${y} L ${cameraX} ${cameraY}`);
 
-  const cubeSize = 35;
-  const cubeX = (100 - cubeSize) / 2;
-  cubeRect.setAttribute("x", cubeX.toString());
-  const fromCubeToCamera = cubeSize / Math.tan(angleToEdge) / 2;
-  const cubeY = cameraY - fromCubeToCamera - cubeSize;
-  cubeRect.setAttribute("y", cubeY.toString());
 }
 
 const dollyZoomInput = getById("dollyZoomInput", HTMLInputElement);
