@@ -91,12 +91,45 @@ function makeMarker(x = 0, y = 0, z = 0) {
 (window as any).makeMarker = makeMarker;
 
 const ball = makeMarker();
-const ballVelocity = { x: THREE.MathUtils.randFloatSpread(3), y: THREE.MathUtils.randFloatSpread(3), z:THREE.MathUtils.randFloatSpread(3)};
+const ballVelocity = { x: THREE.MathUtils.randFloatSpread(7), y: THREE.MathUtils.randFloatSpread(7), z:THREE.MathUtils.randFloatSpread(7)};
+let lastBallUpdate : number | undefined;
+const dimensions = ["x", "y", "z"] as const;
+
+// The _center_ of the ball can _not_ go all the way to the wall.
+// Always reserve one ball radius.
+const ballMin = boxMin + 0.5;
+const ballMax = boxMax - 0.5;
+
+function updateBall(time: DOMHighResTimeStamp) {
+  if (lastBallUpdate !== undefined) {
+    const secondsPassed = (time - lastBallUpdate) / 1000;
+    if (secondsPassed <= 0) {
+      // Do NOT update lastBallUpdate.  Do not do anything.
+      // The logic for bouncing might not work well in reverse.
+      return;
+    }
+    for (const dimension of dimensions) {
+      let newValue = ball.position[dimension];
+      newValue = ball.position[dimension] + ballVelocity[dimension] * secondsPassed;
+      if (newValue < boxMin) {
+        newValue = boxMin;
+        ballVelocity[dimension] = Math.abs(ballVelocity[dimension]);
+      } else if(newValue > boxMax) {
+        newValue = boxMax;
+        ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
+      }
+      ball.position[dimension] = newValue;
+    }  
+  }
+  lastBallUpdate = time; 
+}
 
 // Animation Loop
 
 function animate(time: DOMHighResTimeStamp) {
   requestAnimationFrame(animate);
+
+updateBall(time);
 
   //controls.update();
 
