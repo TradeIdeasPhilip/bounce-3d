@@ -1,0 +1,39 @@
+body {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  outline-style: dotted;
+  outline-width: 3px;
+  outline-color: black;
+  outline-offset: -1em;
+  height : 100vh;
+  width: 100vw;
+}
+
+#canvas {
+  flex-grow: 1;
+
+  outline-style: dotted;
+  outline-width: 3px;
+  outline-color: blue;
+  outline-offset: -0.5em;
+}
+
+#nudgeControls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 1em;
+}
+
+.simpleBorder {
+  border-style: solid;
+  border-color: #ccc;
+  border-width: 0.25em;
+  margin: 0.25em;
+  padding: 0.25em;
+  border-radius: 0.5em;
+}
