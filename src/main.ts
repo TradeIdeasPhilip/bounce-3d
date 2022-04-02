@@ -3,6 +3,7 @@ import * as THREE from "three";
 
 import { getById } from "../lib/client-misc";
 import { FIGURE_SPACE } from "../lib/misc";
+import { f_svg_ellipse_arc } from "./svg-arc";
 
 const canvas = document.querySelector("canvas")!;
 
@@ -101,9 +102,9 @@ function makeMarker(x = 0, y = 0, z = 0) {
 
 const ball = makeMarker();
 const ballVelocity = {
-  x: THREE.MathUtils.randFloatSpread(7),
-  y: THREE.MathUtils.randFloatSpread(7),
-  z: THREE.MathUtils.randFloatSpread(7),
+  x: THREE.MathUtils.randFloatSpread(12),
+  y: THREE.MathUtils.randFloatSpread(12),
+  z: THREE.MathUtils.randFloatSpread(12),
 };
 let lastBallUpdate: number | undefined;
 
@@ -169,14 +170,40 @@ function setCameraPosition(fov? : number) {
 setCameraPosition();
 camera.lookAt(0, 0, 0);
 
+const fovPath = getById("fovPath", SVGPathElement);
+/**
+ * 
+ * @param fov Field of view in degrees.
+ */
+function showFovInSvg(fov : number) {
+  const fovInRadians = fov / 360 * 2 * Math.PI;
+  const angleToEdge = fovInRadians/2;
+  const y = (1- Math.cos(angleToEdge)) * 50;
+  const xOffset = Math.sin(angleToEdge) * 50;
+  const fromX = 50-xOffset;
+  const toX = 50+xOffset;
+  // Draw a triangle.  This was useful to get started.
+  //fovPath.setAttribute("d", `M 50 50 L ${fromX} ${y} L ${toX} ${y} L 50 50`)
+  const largeArcFlag = +(fov > 180);
+  const sweepFlag = 1;
+  fovPath.setAttribute("d", `M 50 50 L ${fromX} ${y} A 50 50 ${fov} ${largeArcFlag} ${sweepFlag} ${toX} ${y} L 50 50`);
+}
+(window as any).showFovInSvg = showFovInSvg;
+
 const dollyZoomInput = getById("dollyZoomInput", HTMLInputElement);
 const dollyZoomSpan = getById("dollyZoomSpan", HTMLSpanElement);
 function updateDollyZoom() {
   setCameraPosition(parseInt(dollyZoomInput.value));
   dollyZoomSpan.innerText = dollyZoomInput.value.padStart(3, FIGURE_SPACE);
+  showFovInSvg(+dollyZoomInput.value);
 }
 dollyZoomInput.addEventListener("input", updateDollyZoom);
 updateDollyZoom();
+
+const myArc = f_svg_ellipse_arc([50, 50], [50, 50], [245 * Math.PI / 180, 50 * Math.PI ], 0);
+(window as any).myArc;
+
+
 
 // Animation Loop
 

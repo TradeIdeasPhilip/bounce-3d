@@ -43,6 +43,26 @@ body {
   flex-grow: 1;
 }
 
+#controls {
+  flex-grow: 1;
+}
+
+#fovDisplay {
+  display: flex;
+  align-items: center;
+  justify-items: center;
+}
+
+#fovSvg {
+  width: 3.75em;
+  height: 3.75em;
+}
+
+#bottom {
+  display: flex;
+  flex-direction: row;
+}
+
 .simpleBorder {
   border-style: solid;
   border-color: #ccc;

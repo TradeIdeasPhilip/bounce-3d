@@ -8,19 +8,38 @@
   </head>
   <body>
     <canvas id="canvas"></canvas>
-    <div id="nudgeControls" class="simpleBorder">
-      Nudge:
-      <button id="nudgeLeft">🠈 Left</button>
-      <button id="nudgeRight">🠊 Right</button>
-      <button id="nudgeUp">🠉 Up</button>
-      <button id="nudgeDown">🠋 Down</button>
-      <button id="nudgeAway">⨂ Away</button>
-      <button id="nudgeToward">⦿ Toward</button>
-    </div>
-    <div id="dollyZoomControls" class="simpleBorder">
-      Dolly Zoom:
-      <input type="range" id="dollyZoomInput" min="2" max="179" value="50">
-      &nbsp;&nbsp;<span id="dollyZoomSpan">180</span>°
+    <div id="bottom">
+      <div id="controls">
+        <div id="nudgeControls" class="simpleBorder">
+          Nudge:
+          <button id="nudgeLeft">🠈 Left</button>
+          <button id="nudgeRight">🠊 Right</button>
+          <button id="nudgeUp">🠉 Up</button>
+          <button id="nudgeDown">🠋 Down</button>
+          <button id="nudgeAway">⨂ Away</button>
+          <button id="nudgeToward">⦿ Toward</button>
+        </div>
+        <div id="dollyZoomControls" class="simpleBorder">
+          Dolly Zoom:
+          <input
+            type="range"
+            id="dollyZoomInput"
+            min="2"
+            max="179"
+            value="50"
+          />
+          &nbsp;&nbsp;<span id="dollyZoomSpan">180</span>°
+        </div>
+      </div>
+      <div id="fovDisplay" class="simpleBorder">
+        <svg
+          viewBox="0 0 100 100"
+          xmlns="http://www.w3.org/2000/svg"
+          id="fovSvg"
+        >
+        <path id="fovPath" d=" M 50 50 L 0 50 A 50 50 0 0 1 54 0 M 50 50" />
+      </svg>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
