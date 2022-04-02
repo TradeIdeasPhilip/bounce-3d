@@ -3,7 +3,6 @@ import * as THREE from "three";
 
 import { getById } from "../lib/client-misc";
 import { FIGURE_SPACE } from "../lib/misc";
-import { f_svg_ellipse_arc } from "./svg-arc";
 
 const canvas = document.querySelector("canvas")!;
 
@@ -171,24 +170,34 @@ setCameraPosition();
 camera.lookAt(0, 0, 0);
 
 const fovPath = getById("fovPath", SVGPathElement);
+const cubeRect = getById("cubeRect", SVGRectElement);
 /**
  * 
  * @param fov Field of view in degrees.
  */
 function showFovInSvg(fov : number) {
+  const cameraX = 50;
+  const cameraY = 95;
+  const fovRadius = 110;
   const fovInRadians = fov / 360 * 2 * Math.PI;
   const angleToEdge = fovInRadians/2;
-  const y = (1- Math.cos(angleToEdge)) * 50;
-  const xOffset = Math.sin(angleToEdge) * 50;
-  const fromX = 50-xOffset;
-  const toX = 50+xOffset;
+  const y = cameraY- Math.cos(angleToEdge) * fovRadius;
+  const xOffset = Math.sin(angleToEdge) * fovRadius;
+  const fromX = cameraX-xOffset;
+  const toX = cameraX+xOffset;
   // Draw a triangle.  This was useful to get started.
   //fovPath.setAttribute("d", `M 50 50 L ${fromX} ${y} L ${toX} ${y} L 50 50`)
   const largeArcFlag = +(fov > 180);
   const sweepFlag = 1;
-  fovPath.setAttribute("d", `M 50 50 L ${fromX} ${y} A 50 50 ${fov} ${largeArcFlag} ${sweepFlag} ${toX} ${y} L 50 50`);
+  fovPath.setAttribute("d", `M ${cameraX} ${cameraY} L ${fromX} ${y} A ${fovRadius} ${fovRadius} ${fov} ${largeArcFlag} ${sweepFlag} ${toX} ${y} L ${cameraX} ${cameraY}`);
+
+  const cubeSize = 35;
+  const cubeX = (100 - cubeSize) / 2;
+  cubeRect.setAttribute("x", cubeX.toString());
+  const fromCubeToCamera = cubeSize / Math.tan(angleToEdge) / 2;
+  const cubeY = cameraY - fromCubeToCamera - cubeSize;
+  cubeRect.setAttribute("y", cubeY.toString());
 }
-(window as any).showFovInSvg = showFovInSvg;
 
 const dollyZoomInput = getById("dollyZoomInput", HTMLInputElement);
 const dollyZoomSpan = getById("dollyZoomSpan", HTMLSpanElement);
@@ -199,10 +208,6 @@ function updateDollyZoom() {
 }
 dollyZoomInput.addEventListener("input", updateDollyZoom);
 updateDollyZoom();
-
-const myArc = f_svg_ellipse_arc([50, 50], [50, 50], [245 * Math.PI / 180, 50 * Math.PI ], 0);
-(window as any).myArc;
-
 
 
 // Animation Loop
