@@ -36,7 +36,6 @@ const boxSize = boxMax - boxMin;
 const gridHelperBottom = new THREE.GridHelper(boxSize, 3);
 gridHelperBottom.position.y = boxMin;
 scene.add(gridHelperBottom);
-(window as any).gridHelper = gridHelperBottom;
 
 const gridHelperTop = new THREE.GridHelper(boxSize, 3);
 gridHelperTop.position.y = boxMax;
@@ -57,21 +56,32 @@ gridHelperBack.rotation.x = Math.PI/2;
 gridHelperBack.position.z = boxMin;
 //scene.add(gridHelperBack);
 
+const dimensions = ["x", "y", "z"] as const;
 
-function addStar() {
-  const geometry = new THREE.SphereGeometry(0.25, 24, 24);
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-  const star = new THREE.Mesh(geometry, material);
+const flashyWalls = 
+{
+  x: {
+    min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
+    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc)
+  },
+  y: {
+    min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
+    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc)
+  },
+  z: {
+    min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
+    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc)
+  },
+};
+flashyWalls.x.min.rotation.z = Math.PI/2;
+flashyWalls.x.max.rotation.z = Math.PI/2;
+flashyWalls.z.min.rotation.x = Math.PI/2;
+flashyWalls.z.max.rotation.x = Math.PI/2;
+dimensions.forEach(dimension => {
+  flashyWalls[dimension].min.position[dimension] = boxMin;
+  flashyWalls[dimension].max.position[dimension] = boxMax;
+});
 
-  const [x, y, z] = Array<void>(3)
-    .fill()
-    .map(() => THREE.MathUtils.randFloatSpread(100));
-
-  star.position.set(x, y, z);
-  scene.add(star);
-}
-
-//Array<void>(200).fill().forEach(addStar);
 
 // x=0 is currently in the center of the viewport.
 // Positive x moves to the right, negative x moves to the left, just like in algebra class.
@@ -93,14 +103,22 @@ function makeMarker(x = 0, y = 0, z = 0) {
 const ball = makeMarker();
 const ballVelocity = { x: THREE.MathUtils.randFloatSpread(7), y: THREE.MathUtils.randFloatSpread(7), z:THREE.MathUtils.randFloatSpread(7)};
 let lastBallUpdate : number | undefined;
-const dimensions = ["x", "y", "z"] as const;
 
 // The _center_ of the ball can _not_ go all the way to the wall.
 // Always reserve one ball radius.
 const ballMin = boxMin + 0.5;
 const ballMax = boxMax - 0.5;
 
+const wallTimeout = new Map<THREE.GridHelper, number>(); 
+
 function updateBall(time: DOMHighResTimeStamp) {
+  wallTimeout.forEach((timeout, wall) => {
+    if (time > timeout) {
+      scene.remove(wall);
+      wallTimeout.delete(wall);
+    }
+  });
+  //allFlashyWalls.forEach(wall => scene.remove(wall));
   if (lastBallUpdate !== undefined) {
     const secondsPassed = (time - lastBallUpdate) / 1000;
     if (secondsPassed <= 0) {
@@ -111,12 +129,18 @@ function updateBall(time: DOMHighResTimeStamp) {
     for (const dimension of dimensions) {
       let newValue = ball.position[dimension];
       newValue = ball.position[dimension] + ballVelocity[dimension] * secondsPassed;
-      if (newValue < boxMin) {
-        newValue = boxMin;
+      if (newValue < ballMin) {
+        newValue = ballMin;
         ballVelocity[dimension] = Math.abs(ballVelocity[dimension]);
-      } else if(newValue > boxMax) {
-        newValue = boxMax;
+        const wall = flashyWalls[dimension].min;
+        scene.add(wall);
+        wallTimeout.set(wall, time + 100);
+      } else if(newValue > ballMax) {
+        newValue = ballMax;
         ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
+        const wall = flashyWalls[dimension].max;
+        scene.add(wall);
+        wallTimeout.set(wall, time + 100);
       }
       ball.position[dimension] = newValue;
     }  
