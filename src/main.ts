@@ -2,6 +2,7 @@ import "./style.css";
 import * as THREE from "three";
 
 import { getById } from "../lib/client-misc";
+import { FIGURE_SPACE } from "../lib/misc";
 
 const canvas = document.querySelector("canvas")!;
 
@@ -21,8 +22,6 @@ renderer.setPixelRatio(window.devicePixelRatio);
 // Is the next line right?  Seems like circular logic!
 // I copied this from code that was resizing the canvas based on the size of the window.
 renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
-camera.position.set(0, 0, 50);
-camera.lookAt(0, 0, 0);
 
 const pointLight = new THREE.PointLight(0xffffff);
 pointLight.position.set(5, 5, 5);
@@ -152,6 +151,32 @@ function updateBall(time: DOMHighResTimeStamp) {
   }
   lastBallUpdate = time;
 }
+
+function setCameraPosition(fov? : number) {
+  if (fov === undefined) {
+    fov = camera.fov;
+  } else {
+    camera.fov = fov;
+    camera.updateProjectionMatrix();  
+  }
+  const fovInRadians = fov / 360 * 2 * Math.PI;
+  const angleToEdge = fovInRadians/2;
+  const cameraToNearFace = boxMax / Math.tan(angleToEdge);
+  camera.position.set(0, 0, boxMax + cameraToNearFace);
+  return cameraToNearFace;
+}
+//(window as any).setCameraPosition = setCameraPosition;
+setCameraPosition();
+camera.lookAt(0, 0, 0);
+
+const dollyZoomInput = getById("dollyZoomInput", HTMLInputElement);
+const dollyZoomSpan = getById("dollyZoomSpan", HTMLSpanElement);
+function updateDollyZoom() {
+  setCameraPosition(parseInt(dollyZoomInput.value));
+  dollyZoomSpan.innerText = dollyZoomInput.value.padStart(3, FIGURE_SPACE);
+}
+dollyZoomInput.addEventListener("input", updateDollyZoom);
+updateDollyZoom();
 
 // Animation Loop
 

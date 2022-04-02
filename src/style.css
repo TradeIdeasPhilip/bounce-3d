@@ -33,6 +33,16 @@ body {
   gap: 1em;
 }
 
+#dollyZoomControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+#dollyZoomInput {
+  flex-grow: 1;
+}
+
 .simpleBorder {
   border-style: solid;
   border-color: #ccc;

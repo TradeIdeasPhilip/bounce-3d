@@ -164,3 +164,8 @@ export function dateIsValid(date: Date): boolean {
  * Google slides still treats this like a normal space. 🙁
  */
 export const NON_BREAKING_SPACE = "\xa0";
+
+/**
+ * Looks like a space.  Is the width of a digit.
+ */
+export const FIGURE_SPACE = "\u2007";
