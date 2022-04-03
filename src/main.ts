@@ -34,28 +34,72 @@ const boxMin = -boxMax;
 const boxSize = boxMax - boxMin;
 
 //const lightHelper = new THREE.PointLightHelper(pointLight);
-const gridHelperBottom = new THREE.GridHelper(boxSize, 3);
-gridHelperBottom.position.y = boxMin;
-scene.add(gridHelperBottom);
 
-const gridHelperTop = new THREE.GridHelper(boxSize, 3);
-gridHelperTop.position.y = boxMax;
-scene.add(gridHelperTop);
+function addGrids() {
+  const gridHelperBottom = new THREE.GridHelper(boxSize, 3);
+  gridHelperBottom.position.y = boxMin;
+  scene.add(gridHelperBottom);
 
-const gridHelperLeft = new THREE.GridHelper(boxSize, 3);
-gridHelperLeft.rotation.z = Math.PI / 2;
-gridHelperLeft.position.x = boxMin;
-scene.add(gridHelperLeft);
+  const interiorColor = 0x333333;
 
-const gridHelperRight = new THREE.GridHelper(boxSize, 3);
-gridHelperRight.rotation.z = Math.PI / 2;
-gridHelperRight.position.x = boxMax;
-scene.add(gridHelperRight);
+  const gridHelperBottom1 = new THREE.GridHelper(
+    boxSize,
+    3,
+    interiorColor,
+    interiorColor
+  );
+  gridHelperBottom1.position.y = boxMin / 3;
+  scene.add(gridHelperBottom1);
 
-const gridHelperBack = new THREE.GridHelper(boxSize, 3);
-gridHelperBack.rotation.x = Math.PI / 2;
-gridHelperBack.position.z = boxMin;
-//scene.add(gridHelperBack);
+  const gridHelperTop = new THREE.GridHelper(boxSize, 3);
+  gridHelperTop.position.y = boxMax;
+  scene.add(gridHelperTop);
+
+  const gridHelperTop1 = new THREE.GridHelper(
+    boxSize,
+    3,
+    interiorColor,
+    interiorColor
+  );
+  gridHelperTop1.position.y = boxMax / 3;
+  scene.add(gridHelperTop1);
+
+  const gridHelperLeft = new THREE.GridHelper(boxSize, 3);
+  gridHelperLeft.rotation.z = Math.PI / 2;
+  gridHelperLeft.position.x = boxMin;
+  scene.add(gridHelperLeft);
+
+  const gridHelperLeft1 = new THREE.GridHelper(
+    boxSize,
+    3,
+    interiorColor,
+    interiorColor
+  );
+  gridHelperLeft1.rotation.z = Math.PI / 2;
+  gridHelperLeft1.position.x = boxMin / 3;
+  scene.add(gridHelperLeft1);
+
+  const gridHelperRight = new THREE.GridHelper(boxSize, 3);
+  gridHelperRight.rotation.z = Math.PI / 2;
+  gridHelperRight.position.x = boxMax;
+  scene.add(gridHelperRight);
+
+  const gridHelperRight1 = new THREE.GridHelper(
+    boxSize,
+    3,
+    interiorColor,
+    interiorColor
+  );
+  gridHelperRight1.rotation.z = Math.PI / 2;
+  gridHelperRight1.position.x = boxMax / 3;
+  scene.add(gridHelperRight1);
+
+  const gridHelperBack = new THREE.GridHelper(boxSize, 3);
+  gridHelperBack.rotation.x = Math.PI / 2;
+  gridHelperBack.position.z = boxMin;
+  //scene.add(gridHelperBack);
+}
+addGrids();
 
 const dimensions = ["x", "y", "z"] as const;
 
@@ -115,6 +159,9 @@ const ballMax = boxMax - 0.5;
 const wallTimeout = new Map<THREE.GridHelper, number>();
 
 function updateBall(time: DOMHighResTimeStamp) {
+  // TODO would be a good pace to add a light.  It would be temporary.  it would be exactly where the ball hit the well
+  // it would last as long as the highlight on the wall.  (Maybe show the highlights on the mini-map at the same time TODO)
+
   wallTimeout.forEach((timeout, wall) => {
     if (time > timeout) {
       scene.remove(wall);
@@ -148,19 +195,21 @@ function updateBall(time: DOMHighResTimeStamp) {
       }
       ball.position[dimension] = newValue;
     }
+    miniBall.setAttribute("cx", ball.position.x.toString());
+    miniBall.setAttribute("cy", ball.position.z.toString());
   }
   lastBallUpdate = time;
 }
 
-function setCameraPosition(fov? : number) {
+function setCameraPosition(fov?: number) {
   if (fov === undefined) {
     fov = camera.fov;
   } else {
     camera.fov = fov;
-    camera.updateProjectionMatrix();  
+    camera.updateProjectionMatrix();
   }
-  const fovInRadians = fov / 360 * 2 * Math.PI;
-  const angleToEdge = fovInRadians/2;
+  const fovInRadians = (fov / 360) * 2 * Math.PI;
+  const angleToEdge = fovInRadians / 2;
   const cameraToNearFace = boxMax / Math.tan(angleToEdge);
   camera.position.set(0, 0, boxMax + cameraToNearFace);
   return cameraToNearFace;
@@ -171,15 +220,17 @@ camera.lookAt(0, 0, 0);
 
 const fovPath = getById("fovPath", SVGPathElement);
 const cubeRect = getById("cubeRect", SVGRectElement);
+const miniBall = getById("miniBall", SVGEllipseElement);
+(window as any).miniBall = miniBall;
 /**
- * 
+ *
  * @param fov Field of view in degrees.
  */
-function showFovInSvg(fov : number) {
+function showFovInSvg(fov: number) {
   const cameraX = 50;
   const cameraY = 95;
-  const fovInRadians = fov / 360 * 2 * Math.PI;
-  const angleToEdge = fovInRadians/2;
+  const fovInRadians = (fov / 360) * 2 * Math.PI;
+  const angleToEdge = fovInRadians / 2;
 
   const cubeSize = 35;
   const cubeX = (100 - cubeSize) / 2;
@@ -188,17 +239,27 @@ function showFovInSvg(fov : number) {
   const cubeY = cameraY - fromCubeToCamera - cubeSize;
   cubeRect.setAttribute("y", cubeY.toString());
 
-  const fovRadius = Math.hypot(cameraX - cubeX, cameraY-cubeY) + cubeSize/10;
-  const y = cameraY- Math.cos(angleToEdge) * fovRadius;
+  const fovRadius =
+    Math.hypot(cameraX - cubeX, cameraY - cubeY) + cubeSize / 10;
+  const y = cameraY - Math.cos(angleToEdge) * fovRadius;
   const xOffset = Math.sin(angleToEdge) * fovRadius;
-  const fromX = cameraX-xOffset;
-  const toX = cameraX+xOffset;
+  const fromX = cameraX - xOffset;
+  const toX = cameraX + xOffset;
   // Draw a triangle.  This was useful to get started.
   //fovPath.setAttribute("d", `M 50 50 L ${fromX} ${y} L ${toX} ${y} L 50 50`)
   const largeArcFlag = +(fov > 180);
   const sweepFlag = 1;
-  fovPath.setAttribute("d", `M ${cameraX} ${cameraY} L ${fromX} ${y} A ${fovRadius} ${fovRadius} ${fov} ${largeArcFlag} ${sweepFlag} ${toX} ${y} L ${cameraX} ${cameraY}`);
+  fovPath.setAttribute(
+    "d",
+    `M ${cameraX} ${cameraY} L ${fromX} ${y} A ${fovRadius} ${fovRadius} ${fov} ${largeArcFlag} ${sweepFlag} ${toX} ${y} L ${cameraX} ${cameraY}`
+  );
 
+  miniBall.setAttribute(
+    "transform",
+    `translate(${cubeX}, ${cubeY}) scale(${
+      cubeSize / (boxMax - boxMin)
+    }) translate(${-boxMin}, ${-boxMin})`
+  );
 }
 
 const dollyZoomInput = getById("dollyZoomInput", HTMLInputElement);
@@ -210,7 +271,6 @@ function updateDollyZoom() {
 }
 dollyZoomInput.addEventListener("input", updateDollyZoom);
 updateDollyZoom();
-
 
 // Animation Loop
 
