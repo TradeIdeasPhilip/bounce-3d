@@ -195,8 +195,11 @@ function updateBall(time: DOMHighResTimeStamp) {
       }
       ball.position[dimension] = newValue;
     }
-    miniBall.setAttribute("cx", ball.position.x.toString());
-    miniBall.setAttribute("cy", ball.position.z.toString());
+    miniBall.cx.baseVal.value = ball.position.x;
+    miniBall.cy.baseVal.value = ball.position.z;
+    const miniBallRadius = ball.position.y/boxMax + 2;
+    miniBall.rx.baseVal.value = miniBallRadius;
+    miniBall.ry.baseVal.value = miniBallRadius;
   }
   lastBallUpdate = time;
 }
