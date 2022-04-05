@@ -4,7 +4,8 @@ import * as THREE from "three";
 import { getById } from "../lib/client-misc";
 import { FIGURE_SPACE } from "../lib/misc";
 
-const canvas = document.querySelector("canvas")!;
+const canvas = getById("canvas", HTMLCanvasElement);
+const canvasHolder = getById("canvasHolder", HTMLDivElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -204,6 +205,18 @@ function updateBall(time: DOMHighResTimeStamp) {
   lastBallUpdate = time;
 }
 
+/**
+ * Set the camera's Field of View as requested.
+ * Then move the camera to a reasonable distance based on the new FOV.
+ *
+ * This is implementing a dolly zoom.
+ * The front of the box should always stay the same.
+ * fov is a way of specifying the zoom.
+ * And a dolly is a device for moving a physical camera.
+ * @param fov Field of view.
+ * If this is blank, use the camera's current FOV.
+ * Otherwise, set the camera's FOV to this value before doing any calculations.
+ */
 function setCameraPosition(fov?: number) {
   if (fov === undefined) {
     fov = camera.fov;
@@ -211,11 +224,24 @@ function setCameraPosition(fov?: number) {
     camera.fov = fov;
     camera.updateProjectionMatrix();
   }
+  // Currently the top and bottom of the front of the box are always at the top and bottom of the canvas.
+  // Depending on the aspect ratio you might see black bars on the left and right.
+  // Or the far left and right of the box might be cut off.
+  //
+  // I'd swear that this used to work in a different way.
+  // If the aspect ratio was wide, then you got black bars on the sides, like you do now.
+  // But if the aspect ratio was narrow, the you got black bars on the top and bottom.
+  // Nothing was ever cut off.
+  // It changed when I added the resizeObserver(), but I can't see why.
+  //
+  // TODO the minimap is wrong.
+  // Need to fix this routine to work like it used to.
+  // Or, failing that, fix the minimap!
+  // But first I really want to understand what changed!
   const fovInRadians = (fov / 360) * 2 * Math.PI;
   const angleToEdge = fovInRadians / 2;
   const cameraToNearFace = boxMax / Math.tan(angleToEdge);
   camera.position.set(0, 0, boxMax + cameraToNearFace);
-  return cameraToNearFace;
 }
 //(window as any).setCameraPosition = setCameraPosition;
 setCameraPosition();
@@ -288,12 +314,10 @@ function animate(time: DOMHighResTimeStamp) {
   //  toUpdate.update(time);
   //}
 
-  // TODO if I leave it running I eventually get this error:
+  // The program I copied this from would often get the following error at the following line.
   // https://stackoverflow.com/questions/25219352/webgl-scene-doest-render-because-of-lost-context
-  // TODO catch the error and try again.  Or something.  Fix it!
-  // Currently everything flashes white, and the the loop stops running.
-  // The auto refresh that happens when I save my code does not fix this bug.
-  // But hitting the refresh button does.
+  // It would only happen if I left it running for a long time. 
+  // I haven't see it here.
   renderer.render(scene, camera);
 }
 requestAnimationFrame(animate);
@@ -312,3 +336,22 @@ requestAnimationFrame(animate);
     ballVelocity[dimension] += delta;
   });
 });
+
+const observer = new ResizeObserver(entries => {
+  for (const entry of entries) {
+    if (entry.contentBoxSize.length != 1) {
+      console.log("Ignoring unexpected resize info", entry);
+    } else {
+      const size = entry.contentBoxSize[0];
+      const height = size.blockSize;
+      const width = size.inlineSize;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      // The following line sets the canvas's internal and external
+      // sizes.  The input is in css pixels.  setSize() will
+      // automatically convert that to device pixels where appropriate.
+      renderer.setSize(width, height);
+    }
+  }
+});
+observer.observe(canvasHolder,{ box: "content-box"});
