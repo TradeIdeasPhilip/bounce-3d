@@ -370,4 +370,11 @@ const observer = new ResizeObserver(entries => {
     }
   }
 });
+// renderer.setSize() resizes the inside and the outside of the canvas.
+// They should go together to make sure that one pixel in the canvas's bitmap corresponds to exactly one pixel on the screen.
+// I might only need one of these for my current layout.
+// But to be safe I should probably listen to both.
+// There is already code to merge the messages if we get a bunch quickly.
+// So some of the overhead will double because of this second listener, but the main part of the work will remain the same.
 observer.observe(canvasHolder,{ box: "content-box"});
+observer.observe(canvasHolder,{ box: "device-pixel-content-box"});
