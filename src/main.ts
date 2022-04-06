@@ -306,6 +306,8 @@ updateDollyZoom();
 function animate(time: DOMHighResTimeStamp) {
   requestAnimationFrame(animate);
 
+  resizeAction?.();
+
   updateBall(time);
 
   //controls.update();
@@ -337,6 +339,12 @@ requestAnimationFrame(animate);
   });
 });
 
+/**
+ * This might update the screen after a resize.
+ * This function includes a delay so multiple requests in a row can be consolidated.
+ */
+let resizeAction : (()=>void) | undefined;
+
 const observer = new ResizeObserver(entries => {
   for (const entry of entries) {
     if (entry.contentBoxSize.length != 1) {
@@ -345,12 +353,20 @@ const observer = new ResizeObserver(entries => {
       const size = entry.contentBoxSize[0];
       const height = size.blockSize;
       const width = size.inlineSize;
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      // The following line sets the canvas's internal and external
-      // sizes.  The input is in css pixels.  setSize() will
-      // automatically convert that to device pixels where appropriate.
-      renderer.setSize(width, height);
+      let count = 3;
+      resizeAction = () => {
+        if (count < 1) {
+          resizeAction = undefined;
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          // The following line sets the canvas's internal and external
+          // sizes.  The input is in css pixels.  setSize() will
+          // automatically convert that to device pixels where appropriate.
+          renderer.setSize(width, height);  
+        } else {
+          count--;
+        }  
+      };
     }
   }
 });
