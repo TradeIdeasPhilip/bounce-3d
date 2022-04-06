@@ -295,7 +295,7 @@ const dollyZoomInput = getById("dollyZoomInput", HTMLInputElement);
 const dollyZoomSpan = getById("dollyZoomSpan", HTMLSpanElement);
 function updateDollyZoom() {
   setCameraPosition(parseInt(dollyZoomInput.value));
-  dollyZoomSpan.innerText = dollyZoomInput.value.padStart(3, FIGURE_SPACE);
+  dollyZoomSpan.innerText = dollyZoomInput.value.padStart(3, FIGURE_SPACE) + "°";
   showFovInSvg(+dollyZoomInput.value);
 }
 dollyZoomInput.addEventListener("input", updateDollyZoom);

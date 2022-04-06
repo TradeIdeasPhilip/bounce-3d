@@ -18,9 +18,7 @@ body {
   flex-grow: 1;
   flex-shrink: 1;
   overflow: hidden;
-
-  display: flex;
-  align-items: stretch;
+  position: relative;
   /*
   outline-style: dotted;
   outline-width: 3px;
@@ -36,8 +34,9 @@ body {
  * Depending on other details it will leave blank space or it will try to draw past the allocate space.
  * flex-grow:1 works perfectly but sometime flex-shrink does not. */
 #canvas {
-  flex-grow: 1;
-  width:0;
+  position: absolute;
+  top:0;
+  left:0;
 }
 
 #nudgeControls {
@@ -52,10 +51,12 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
+  column-gap: 0.5em; 
 }
 
 #dollyZoomInput {
-  flex-grow: 1;
+  flex: 1 1;
+  min-width: 2em;
 }
 
 #controls {
