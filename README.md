@@ -26,4 +26,4 @@ For more info:  https://vitejs.dev/guide/#command-line-interface.
 [My balls are always bouncing.](https://www.youtube.com/watch?v=xPlqLHcphyw)
 
 ## Known Issues
-* If the aspect ratio gets too narrow, the mini-map /top down view won't match the big display right.  (Details in a TODO comment.)
+* If the aspect ratio gets too narrow, the mini-map / top down view won't match the big display right.  (Details in a TODO comment.)

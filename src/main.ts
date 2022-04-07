@@ -238,6 +238,11 @@ function setCameraPosition(fov?: number) {
   // Need to fix this routine to work like it used to.
   // Or, failing that, fix the minimap!
   // But first I really want to understand what changed!
+  //
+  // I found some good info on FOV vs aspect ratio!
+  // https://stackoverflow.com/questions/17837652/calculating-frame-and-aspect-ratio-guides-to-match-cameras/17840405#17840405
+  // According to this, PerspectiveCamera.fov refers to the FOV in the vertical direction.
+  // It includes math for computing the FOV in the horizontal direction.
   const fovInRadians = (fov / 360) * 2 * Math.PI;
   const angleToEdge = fovInRadians / 2;
   const cameraToNearFace = boxMax / Math.tan(angleToEdge);
@@ -358,6 +363,7 @@ const observer = new ResizeObserver(entries => {
         if (count < 1) {
           resizeAction = undefined;
           camera.aspect = width / height;
+          setCameraPosition();
           camera.updateProjectionMatrix();
           // The following line sets the canvas's internal and external
           // sizes.  The input is in css pixels.  setSize() will
