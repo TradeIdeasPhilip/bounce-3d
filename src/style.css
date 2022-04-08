@@ -44,7 +44,7 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   align-items: baseline;
-  gap: 1em;
+  gap: 0.25em 0.5em;
 }
 
 #dollyZoomControls {
@@ -60,18 +60,20 @@ body {
 }
 
 #controls {
-  flex-grow: 1;
+  flex: 1;
 }
 
 #fovDisplay {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-items: center;
+  overflow: hidden;
 }
 
 #fovSvg {
   width: 3.75em;
   height: 3.75em;
+  overflow: overlay;
 }
 
 #bottom {
