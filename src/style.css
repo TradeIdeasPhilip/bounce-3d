@@ -89,3 +89,9 @@ body {
   padding: 0.25em;
   border-radius: 0.5em;
 }
+
+@media (max-width: 20rem) {
+  .optional {
+    display: none;
+  }
+}
