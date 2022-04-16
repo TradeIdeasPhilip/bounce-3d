@@ -134,6 +134,19 @@ dimensions.forEach((dimension) => {
 // z=0 is the center of the grid.
 // Positive z moves toward the camera.  Negative z moves toward the horizon.
 
+function drawLines() {
+  const material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+  const points = [];
+  points.push( new THREE.Vector3( - 10, 0, 0 ) );
+  points.push( new THREE.Vector3( 0, 10, 0 ) );
+  points.push( new THREE.Vector3( 10, 0, 0 ) );
+  
+  const geometry = new THREE.BufferGeometry().setFromPoints( points );
+  const line = new THREE.Line( geometry, material );
+  scene.add(line);
+}
+drawLines();
+
 function makeMarker(x = 0, y = 0, z = 0) {
   const geometry = new THREE.SphereGeometry(1, 24, 24);
   const material = new THREE.MeshStandardMaterial({ color: 0xff2020 });
