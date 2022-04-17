@@ -95,3 +95,18 @@ body {
     display: none;
   }
 }
+
+#help {
+  position: absolute;
+  top:0;
+  left:0;
+  z-index: 5;
+  font-size: 2rem;
+  background-color: rgba(64, 64, 64, 70%);
+  padding: 0.25rem 0.5rem;
+}
+
+#help a {
+  color: white;
+  font-weight: bold;
+}

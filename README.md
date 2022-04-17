@@ -9,7 +9,8 @@ The basics are there.
 I want to improve the graphics.
 
 ## See it Running
-https://youtu.be/OEnWbJ4_FKY
+* https://tradeideasphilip.github.io/bounce-3d/
+* https://youtu.be/OEnWbJ4_FKY
 
 ## How to Run Locally
 * Clone this project with git.
