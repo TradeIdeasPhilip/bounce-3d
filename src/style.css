@@ -110,3 +110,7 @@ body {
   color: white;
   font-weight: bold;
 }
+
+.arrow {
+  font-family: Arial, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Apple Symbols";
+}
