@@ -27,16 +27,16 @@ body {
   */
 }
 
-/* It seems like this should say flex-shrink:1.  
- * That allocates the right amount of space.
- * But a <canvas> or an <img> will ignore that.
- * It will try to maintain the right aspect ratio.
- * Depending on other details it will leave blank space or it will try to draw past the allocate space.
- * flex-grow:1 works perfectly but sometime flex-shrink does not. */
-#canvas {
+#canvasCenterEr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   position: absolute;
   top:0;
   left:0;
+  bottom:0;
+  right:0;
 }
 
 #nudgeControls {

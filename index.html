@@ -7,9 +7,13 @@
     <title>Bounce 3D</title>
   </head>
   <body>
-    <div id="help"><a href="https://github.com/TradeIdeasPhilip/bounce-3d">?</a></div>
+    <div id="help">
+      <a href="https://github.com/TradeIdeasPhilip/bounce-3d">?</a>
+    </div>
     <div id="canvasHolder">
-      <canvas id="canvas"></canvas>
+      <div id="canvasCenterEr">
+        <canvas id="canvas"></canvas>
+      </div>
     </div>
     <div id="bottom">
       <div id="controls">
@@ -20,7 +24,9 @@
           <button id="nudgeUp">🠉<span class="optional"> Up</span></button>
           <button id="nudgeDown">🠋<span class="optional"> Down</span></button>
           <button id="nudgeAway">⨂<span class="optional"> Away</span></button>
-          <button id="nudgeToward">⦿<span class="optional"> Toward</span></button>
+          <button id="nudgeToward">
+            ⦿<span class="optional"> Toward</span>
+          </button>
         </div>
         <div id="dollyZoomControls" class="simpleBorder">
           <span><span class="optional">Dolly </span>Zoom:</span>
@@ -41,12 +47,18 @@
           xmlns="http://www.w3.org/2000/svg"
           id="fovSvg"
         >
-        <path id="fovPath" d=" M 50 50 L 0 50 A 50 50 0 0 1 54 0 M 50 50" />
-        <rect id="cubeRect" x="32.5" y="25" height="35" width="35" fill="#aaaaaa">
-        </rect>
-        <!-- A radius of 1 would make the relative size of the ball correct.  But that's hard to see.  -->
-        <ellipse id="miniBall" rx="3" ry="3" fill="red"></ellipse>
-      </svg>
+          <path id="fovPath" d=" M 50 50 L 0 50 A 50 50 0 0 1 54 0 M 50 50" />
+          <rect
+            id="cubeRect"
+            x="32.5"
+            y="25"
+            height="35"
+            width="35"
+            fill="#aaaaaa"
+          ></rect>
+          <!-- A radius of 1 would make the relative size of the ball correct.  But that's hard to see.  -->
+          <ellipse id="miniBall" rx="3" ry="3" fill="red"></ellipse>
+        </svg>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

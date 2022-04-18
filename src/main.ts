@@ -113,6 +113,18 @@ function drawLines() {
 // I don't know why not.
 // I'm loading the font and I'm getting a non-zero size for the object.
 // I've tried moving it but that didn't help.
+//
+// Note:  When running in development mode (http://localhost:4000/) the font loads correctly.
+// When running in production mode (https://tradeideasphilip.github.io/bounce-3d/) the font does not.
+// If you reference an asset directly from the HTML file or from a CSS import,
+// Vite will figure that out and copy that file into the production bundle.
+// TODO fix this.
+//
+// Note, in development mode I saw a hint of the text.
+// When I set the field of view to around 163 the text appears.
+// It is hard to read, but I'm pretty sure I found my text.
+// It seems to be above the box.
+// Fortunately the box is 50% transparent!
 function drawText() {
   scene.fog = new THREE.Fog(0x000000, 250, 1400);
 
@@ -283,37 +295,18 @@ function updateBall(time: DOMHighResTimeStamp) {
 /**
  * Set the camera's Field of View as requested.
  * Then move the camera to a reasonable distance based on the new FOV.
- *
+ * 
  * This is implementing a dolly zoom.
  * The front of the box should always stay the same.
  * fov is a way of specifying the zoom.
  * And a dolly is a device for moving a physical camera.
  * @param fov Field of view.
- * If this is blank, use the camera's current FOV.
- * Otherwise, set the camera's FOV to this value before doing any calculations.
  */
-function setCameraPosition(fov?: number) {
-  if (fov === undefined) {
-    fov = camera.fov;
-  } else {
-    camera.fov = fov;
-    camera.updateProjectionMatrix();
-  }
-  // Currently the top and bottom of the front of the box are always at the top and bottom of the canvas.
-  // Depending on the aspect ratio you might see black bars on the left and right.
-  // Or the far left and right of the box might be cut off.
+function setCameraPosition(fov = 50) {
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
   //
-  // I'd swear that this used to work in a different way.
-  // If the aspect ratio was wide, then you got black bars on the sides, like you do now.
-  // But if the aspect ratio was narrow, the you got black bars on the top and bottom.
-  // Nothing was ever cut off.
-  // It changed when I added the resizeObserver(), but I can't see why.
-  //
-  // TODO the minimap is wrong.
-  // Need to fix this routine to work like it used to.
-  // Or, failing that, fix the minimap!
-  // But first I really want to understand what changed!
-  //
+  // For now we just rely on the aspect ration being 1.  Set by the outside.
   // I found some good info on FOV vs aspect ratio!
   // https://stackoverflow.com/questions/17837652/calculating-frame-and-aspect-ratio-guides-to-match-cameras/17840405#17840405
   // According to this, PerspectiveCamera.fov refers to the FOV in the vertical direction.
@@ -323,7 +316,6 @@ function setCameraPosition(fov?: number) {
   const cameraToNearFace = boxMax / Math.tan(angleToEdge);
   camera.position.set(0, 0, boxMax + cameraToNearFace);
 }
-//(window as any).setCameraPosition = setCameraPosition;
 setCameraPosition();
 camera.lookAt(0, 0, 0);
 
@@ -397,10 +389,6 @@ function animate(time: DOMHighResTimeStamp) {
   //  toUpdate.update(time);
   //}
 
-  // The program I copied this from would often get the following error at the following line.
-  // https://stackoverflow.com/questions/25219352/webgl-scene-doest-render-because-of-lost-context
-  // It would only happen if I left it running for a long time.
-  // I haven't see it here.
   renderer.render(scene, camera);
 }
 requestAnimationFrame(animate);
@@ -438,13 +426,11 @@ const observer = new ResizeObserver((entries) => {
       resizeAction = () => {
         if (count < 1) {
           resizeAction = undefined;
-          camera.aspect = width / height;
-          setCameraPosition();
+          camera.aspect = 1;
           camera.updateProjectionMatrix();
-          // The following line sets the canvas's internal and external
-          // sizes.  The input is in css pixels.  setSize() will
-          // automatically convert that to device pixels where appropriate.
-          renderer.setSize(width, height);
+          const size = Math.min(width, height);
+          renderer.setSize(size, size);
+          setCameraPosition();
         } else {
           count--;
         }
