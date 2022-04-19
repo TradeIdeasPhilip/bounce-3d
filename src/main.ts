@@ -161,19 +161,29 @@ function drawText() {
   const loader = new FontLoader();
   loader.load(
     optimerRegular,
-    function (response) {
-      const font = response;
+    function (font) {
+      /**
+       * This is the extra dimension we are adding by extruding the text.
+       */
+      const height = 20;
 
-      const textGeo = new TextGeometry(pick(batmanFightWords) + "!!", {
+      /**
+       * We're putting two surfaces at the same place.
+       * It's somewhat random which gets picked, and it changes constantly with the zoom.
+       * So we move the text just a little bit inside the box, so make sure it is visible.
+       */
+      const padding = 0.1;
+
+      const textGeo = new TextGeometry(pick(batmanFightWords) + "!".repeat(Math.floor(Math.random()*3) + 1), {
         font: font,
 
-        size: 70,
-        height: 20,
+        size: 3,
+        height,
         curveSegments: 4,
 
-        bevelThickness: 2,
-        bevelSize: 1.5,
-        bevelEnabled: true,
+        bevelThickness: 0.25,
+        bevelSize: 0.25,
+        bevelEnabled: false,
       });
 
       textGeo.computeBoundingBox();
@@ -184,13 +194,14 @@ function drawText() {
       const textMesh1 = new THREE.Mesh(textGeo, materials);
 
       textMesh1.position.x = centerOffset;
-      textMesh1.position.y = 30;
-      textMesh1.position.z = 0;
+      textMesh1.position.y = boxMin;
+      textMesh1.position.z = boxMin-height+padding;
 
       textMesh1.rotation.x = 0;
       textMesh1.rotation.y = Math.PI * 2;
 
-      /*group*/ scene.add(textMesh1);
+      /*group*/ scene.add(textMesh1);  
+      (window as any).textMesh1 = textMesh1;
     }
   );
 }
