@@ -5,6 +5,15 @@ import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 
 import optimerBold from "three/examples/fonts/optimer_bold.typeface.json?url";
 import optimerRegular from "three/examples/fonts/optimer_regular.typeface.json?url";
+import droidSansMonoRegular from "three/examples/fonts/droid/droid_sans_mono_regular.typeface.json?url";
+import droidSansBold from "three/examples/fonts/droid/droid_sans_bold.typeface.json?url";
+import droidSansRegular from "three/examples/fonts/droid/droid_sans_regular.typeface.json?url";
+import droidSerifBold from "three/examples/fonts/droid/droid_serif_bold.typeface.json?url";
+import droidSerifRegular from "three/examples/fonts/droid/droid_serif_regular.typeface.json?url";
+import gentilisBold from "three/examples/fonts/gentilis_bold.typeface.json?url";
+import gentilisRegular from "three/examples/fonts/gentilis_regular.typeface.json?url";
+import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?url";
+import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
 import { getById } from "../lib/client-misc";
 import { FIGURE_SPACE, pick } from "../lib/misc";
@@ -251,15 +260,29 @@ function drawText() {
 }
 //drawText();
 
-let font: Font | undefined;
-new FontLoader().load(optimerRegular, function (response) {
-  font = response;
+const fonts: Font[] = [];
+[
+  optimerBold,
+  optimerRegular,
+  //droidSansMonoRegular,
+  droidSansBold,
+  droidSansRegular,
+  droidSerifBold,
+  droidSerifRegular,
+  gentilisBold,
+  gentilisRegular,
+  helvetikerBold,
+  helvetikerRegular,
+].forEach((fontUrl) => {
+  new FontLoader().load(fontUrl, function (font) {
+    fonts.push(font);
+  });
 });
 
-const drawnOnWall = new Map<string, ()=>void>();
+const drawnOnWall = new Map<string, () => void>();
 
 function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
-  if (!font) {
+  if (fonts.length == 0) {
     return;
   }
 
@@ -291,7 +314,7 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
     pick(batmanFightWords) + "!".repeat(Math.floor(Math.random() * 3) + 1);
 
   const textGeo = new TextGeometry(text, {
-    font,
+    font: pick(fonts),
     size: 3,
     height,
     curveSegments: 4,
@@ -321,7 +344,7 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
     const invert = side == "min" ? -1 : 1;
     textMesh.position.x = ball.position.x + centerOffset;
     textMesh.position.z = ball.position.z;
-    textMesh.position.y = - invert * (boxMin - height + padding);
+    textMesh.position.y = -invert * (boxMin - height + padding);
     textMesh.rotation.x = invert * (Math.PI / 2);
   }
   scene.add(textMesh);
