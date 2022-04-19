@@ -4,13 +4,17 @@ Make a ball bounce off all 6 walls of a cube.
 
 The last time I did this demo it was in Pascal and Turtle Graphics!
 
+This project uses three.js.
+I.e. WebGL and GPUs.
+
 ## Current Status
-The basics are there.
-I want to improve the graphics.
+The program does most of what I want.
+
+I'd like to play with the lights and shadows and reflections more.
 
 ## See it Running
-* https://tradeideasphilip.github.io/bounce-3d/
-* https://youtu.be/OEnWbJ4_FKY
+* [Run it yourself](https://tradeideasphilip.github.io/bounce-3d/)
+* [Watch on YouTube](https://youtu.be/OEnWbJ4_FKY) (old)
 
 ## How to Run Locally
 * Clone this project with git.
@@ -19,7 +23,7 @@ I want to improve the graphics.
 * `npm run dev`
 * Click on the link displayed in your terminal.
 ## How to Build for Production
-`npx vite build`
+`tsc && npx vite build`
 
 For more info:  https://vitejs.dev/guide/#command-line-interface.
 

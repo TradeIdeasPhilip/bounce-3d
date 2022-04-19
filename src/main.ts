@@ -1,6 +1,6 @@
 import "./style.css";
 import * as THREE from "three";
-import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+import { Font, FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 
 import optimerBold from "three/examples/fonts/optimer_bold.typeface.json?url";
@@ -16,8 +16,6 @@ import batmanFightWords from "./batman-fight-words.json";
 // * Make arrows work on android.  SVG?
 //   http://thenewcode.com/1068/Making-Arrows-in-SVG
 //   https://www.svgviewer.dev/s/11868/arrow-right-1
-// * Find the text!!!  It was printed, just somewhere odd.  looked high and huge, but it was distorted so who knows for sure
-//   Set FOV to 100 or more and you'll see the text.
 
 const canvas = getById("canvas", HTMLCanvasElement);
 const canvasHolder = getById("canvasHolder", HTMLDivElement);
@@ -122,43 +120,28 @@ function drawLines() {
 }
 //drawLines();
 
-// TODO I can't get the text to draw.
-// I don't know why not.
-// I'm loading the font and I'm getting a non-zero size for the object.
-// I've tried moving it but that didn't help.
-//
-// Note:  When running in development mode (http://localhost:4000/) the font loads correctly.
-// When running in production mode (https://tradeideasphilip.github.io/bounce-3d/) the font does not.
-// If you reference an asset directly from the HTML file or from a CSS import,
-// Vite will figure that out and copy that file into the production bundle.
-// TODO fix this.
-//
-// Note, in development mode I saw a hint of the text.
-// When I set the field of view to around 163 the text appears.
-// It is hard to read, but I'm pretty sure I found my text.
-// It seems to be above the box.
-// Fortunately the box is 50% transparent!
+const materials = [
+  new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
+  new THREE.MeshPhongMaterial({ color: 0x000000 }), // side
+];
+
+const materialsBack = [
+  new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
+  new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
+];
+
+scene.fog = new THREE.Fog(0x000000, 250, 1400);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
+dirLight.position.set(0, 0, 1).normalize();
+scene.add(dirLight);
+
+// Of all the lights, this one seems to help the most!  :)
+const pointLight1 = new THREE.PointLight(0xffffff, 1.5);
+pointLight.position.set(0, 100, 90);
+scene.add(pointLight1);
+
 function drawText() {
-  scene.fog = new THREE.Fog(0x000000, 250, 1400);
-
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
-  dirLight.position.set(0, 0, 1).normalize();
-  scene.add(dirLight);
-
-  const pointLight = new THREE.PointLight(0xffffff, 1.5);
-  pointLight.position.set(0, 100, 90);
-  scene.add(pointLight);
-
-  const materials = [
-    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
-    new THREE.MeshPhongMaterial({ color: 0x000000 }), // side
-  ];
-
-  const materialsBack = [
-    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
-    new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
-  ];
-
   const group = new THREE.Group();
   group.position.y = 100;
   scene.add(group);
@@ -172,19 +155,19 @@ function drawText() {
      */
     const padding = 0.2;
 
-    function makeWords(backWall : boolean, text?: string) {
+    function makeWords(backWall: boolean, text?: string) {
       if (!text) {
         text =
           pick(batmanFightWords) +
           "!".repeat(Math.floor(Math.random() * 3) + 1);
       }
 
-    /**
-     * This is the extra dimension we are adding by extruding the text.
-     */
-     const height = backWall?20:padding;
+      /**
+       * This is the extra dimension we are adding by extruding the text.
+       */
+      const height = backWall ? 20 : padding;
 
-     const textGeo = new TextGeometry(text, {
+      const textGeo = new TextGeometry(text, {
         font: font,
 
         size: 3,
@@ -201,7 +184,10 @@ function drawText() {
       const centerOffset =
         -0.5 * (textGeo.boundingBox!.max.x - textGeo.boundingBox!.min.x);
 
-      const textMesh = new THREE.Mesh(textGeo, backWall?materialsBack:materials);
+      const textMesh = new THREE.Mesh(
+        textGeo,
+        backWall ? materialsBack : materials
+      );
 
       return { centerOffset, textMesh, height };
     }
@@ -263,7 +249,88 @@ function drawText() {
     }
   });
 }
-drawText();
+//drawText();
+
+let font: Font | undefined;
+new FontLoader().load(optimerRegular, function (response) {
+  font = response;
+});
+
+const drawnOnWall = new Map<string, ()=>void>();
+
+function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
+  if (!font) {
+    return;
+  }
+
+  if (bounceDimension == "z" && side == "max") {
+    return;
+  }
+
+  const key = bounceDimension + side;
+
+  {
+    const cleanPrevious = drawnOnWall.get(key);
+    if (cleanPrevious) {
+      cleanPrevious();
+    }
+  }
+
+  /**
+   * How much of the words extends inside the box.
+   * This refers to the extruded dimension.
+   */
+  const padding = 0.2;
+
+  /**
+   * This is the extra dimension we are adding by extruding the text.
+   */
+  const height = bounceDimension == "z" ? 20 : padding;
+
+  const text =
+    pick(batmanFightWords) + "!".repeat(Math.floor(Math.random() * 3) + 1);
+
+  const textGeo = new TextGeometry(text, {
+    font,
+    size: 3,
+    height,
+    curveSegments: 4,
+    bevelEnabled: false,
+  });
+  textGeo.computeBoundingBox();
+
+  const centerOffset =
+    -0.5 * (textGeo.boundingBox!.max.x - textGeo.boundingBox!.min.x);
+
+  const textMesh = new THREE.Mesh(
+    textGeo,
+    bounceDimension == "z" ? materialsBack : materials
+  );
+
+  if (bounceDimension == "z") {
+    textMesh.position.x = centerOffset + ball.position.x;
+    textMesh.position.y = ball.position.y;
+    textMesh.position.z = boxMin - height + padding;
+  } else if (bounceDimension == "x") {
+    const invert = side == "min" ? 1 : -1;
+    textMesh.position.z = ball.position.z - invert * centerOffset;
+    textMesh.position.y = ball.position.y;
+    textMesh.position.x = invert * (boxMin - height + padding);
+    textMesh.rotation.y = invert * (Math.PI / 2);
+  } else {
+    const invert = side == "min" ? -1 : 1;
+    textMesh.position.x = ball.position.x + centerOffset;
+    textMesh.position.z = ball.position.z;
+    textMesh.position.y = - invert * (boxMin - height + padding);
+    textMesh.rotation.x = invert * (Math.PI / 2);
+  }
+  scene.add(textMesh);
+
+  drawnOnWall.set(key, () => {
+    scene.remove(textMesh);
+    textGeo.dispose();
+  });
+}
 
 function drawPlanes() {
   const rearPlane = new THREE.Mesh(
@@ -376,12 +443,14 @@ function updateBall(time: DOMHighResTimeStamp) {
         const wall = flashyWalls[dimension].min;
         scene.add(wall);
         wallTimeout.set(wall, time + 100);
+        drawOnWall(dimension, "min");
       } else if (newValue > ballMax) {
         newValue = ballMax;
         ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
         const wall = flashyWalls[dimension].max;
         scene.add(wall);
         wallTimeout.set(wall, time + 100);
+        drawOnWall(dimension, "max");
       }
       ball.position[dimension] = newValue;
     }
