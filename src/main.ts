@@ -151,7 +151,7 @@ function drawText() {
 
   const materials = [
     new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
-    new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
+    new THREE.MeshPhongMaterial({ color: 0x000000 }), // side
   ];
 
   const group = new THREE.Group();
@@ -159,22 +159,26 @@ function drawText() {
   scene.add(group);
 
   const loader = new FontLoader();
-  loader.load(
-    optimerRegular,
-    function (font) {
-      /**
-       * This is the extra dimension we are adding by extruding the text.
-       */
-      const height = 20;
+  loader.load(optimerRegular, function (font) {
+    /**
+     * We're putting two surfaces at the same place.
+     * It's somewhat random which gets picked, and it changes constantly with the zoom.
+     * So we move the text just a little bit inside the box, so make sure it is visible.
+     */
+    const padding = 0.2;
 
-      /**
-       * We're putting two surfaces at the same place.
-       * It's somewhat random which gets picked, and it changes constantly with the zoom.
-       * So we move the text just a little bit inside the box, so make sure it is visible.
-       */
-      const padding = 0.1;
+    /**
+     * This is the extra dimension we are adding by extruding the text.
+     */
+    const height = padding;
 
-      const textGeo = new TextGeometry(pick(batmanFightWords) + "!".repeat(Math.floor(Math.random()*3) + 1), {
+    function makeWords(text?: string) {
+      if (!text) {
+        text =
+          pick(batmanFightWords) +
+          "!".repeat(Math.floor(Math.random() * 3) + 1);
+      }
+      const textGeo = new TextGeometry(text, {
         font: font,
 
         size: 3,
@@ -191,56 +195,124 @@ function drawText() {
       const centerOffset =
         -0.5 * (textGeo.boundingBox!.max.x - textGeo.boundingBox!.min.x);
 
-      const textMesh1 = new THREE.Mesh(textGeo, materials);
+      const textMesh = new THREE.Mesh(textGeo, materials);
 
-      textMesh1.position.x = centerOffset;
-      textMesh1.position.y = boxMin;
-      textMesh1.position.z = boxMin-height+padding;
-
-      textMesh1.rotation.x = 0;
-      textMesh1.rotation.y = Math.PI * 2;
-
-      /*group*/ scene.add(textMesh1);  
-      (window as any).textMesh1 = textMesh1;
+      return { centerOffset, textMesh };
     }
-  );
+    // position and rotation are both relative to
+    // * The left side of the text.
+    // * The baseline of the text, which may or my not be the lowest part.  qjy
+    // * And the back of the text.  The part that's furthest from the camera, if you can read the text.
+
+    const debug = {} as any;
+    (window as any).textMeshes = debug;
+
+    {
+      const { textMesh, centerOffset } = makeWords("back");
+      textMesh.position.x = centerOffset;
+      textMesh.position.y = boxMin;
+      textMesh.position.z = boxMin - height + padding;
+      scene.add(textMesh);
+      debug.back = textMesh;
+    }
+
+    {
+      const { textMesh, centerOffset } = makeWords("left");
+      textMesh.position.z = -centerOffset;
+      textMesh.position.y = boxMin;
+      textMesh.position.x = boxMin - height + padding;
+      textMesh.rotation.y = Math.PI / 2;
+      scene.add(textMesh);
+      debug.left = textMesh;
+    }
+
+    {
+      const { textMesh, centerOffset } = makeWords("right");
+      textMesh.position.z = centerOffset;
+      textMesh.position.y = boxMin;
+      textMesh.position.x = -(boxMin - height + padding);
+      textMesh.rotation.y = -Math.PI / 2;
+      scene.add(textMesh);
+      debug.right = textMesh;
+    }
+
+    {
+      const { textMesh, centerOffset } = makeWords("top");
+      textMesh.position.x = centerOffset;
+      textMesh.position.z = boxMin;
+      textMesh.position.y = -(boxMin - height + padding);
+      textMesh.rotation.x = Math.PI / 2;
+      scene.add(textMesh);
+      debug.top = textMesh;
+    }
+
+    {
+      const { textMesh, centerOffset } = makeWords("bottom");
+      textMesh.position.x = centerOffset;
+      textMesh.position.z = boxMax;
+      textMesh.position.y = boxMin - height + padding;
+      textMesh.rotation.x = -Math.PI / 2;
+      scene.add(textMesh);
+      debug.bottom = textMesh;
+    }
+  });
 }
 drawText();
 
 function drawPlanes() {
   const rearPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry( boxSize, boxSize ),
-    new THREE.MeshBasicMaterial( { color: 0xff0000, opacity: 0.5, transparent: true } )
+    new THREE.PlaneGeometry(boxSize, boxSize),
+    new THREE.MeshBasicMaterial({
+      color: 0xff0000,
+      opacity: 0.5,
+      transparent: true,
+    })
   );
   rearPlane.position.z = boxMin;
-  scene.add( rearPlane );
+  scene.add(rearPlane);
   const leftPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry( boxSize, boxSize ),
-    new THREE.MeshBasicMaterial( { color: 0x00ff00, opacity: 0.5, transparent: true } )
+    new THREE.PlaneGeometry(boxSize, boxSize),
+    new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      opacity: 0.5,
+      transparent: true,
+    })
   );
   leftPlane.position.x = boxMin;
-  leftPlane.rotation.y = Math.PI/2;
+  leftPlane.rotation.y = Math.PI / 2;
   scene.add(leftPlane);
   const rightPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry( boxSize, boxSize ),
-    new THREE.MeshBasicMaterial( { color: 0x0000ff, opacity: 0.5, transparent: true } )
+    new THREE.PlaneGeometry(boxSize, boxSize),
+    new THREE.MeshBasicMaterial({
+      color: 0x0000ff,
+      opacity: 0.5,
+      transparent: true,
+    })
   );
   rightPlane.position.x = boxMax;
-  rightPlane.rotation.y = -Math.PI/2;
+  rightPlane.rotation.y = -Math.PI / 2;
   scene.add(rightPlane);
   const topPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry( boxSize, boxSize ),
-    new THREE.MeshBasicMaterial( { color: 0xffff00, opacity: 0.5, transparent: true } )
+    new THREE.PlaneGeometry(boxSize, boxSize),
+    new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      opacity: 0.5,
+      transparent: true,
+    })
   );
   topPlane.position.y = boxMax;
-  topPlane.rotation.x = Math.PI/2;
+  topPlane.rotation.x = Math.PI / 2;
   scene.add(topPlane);
   const bottomPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry( boxSize, boxSize ),
-    new THREE.MeshBasicMaterial( { color: 0x00ffff, opacity: 0.5, transparent: true } )
+    new THREE.PlaneGeometry(boxSize, boxSize),
+    new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
+      opacity: 0.5,
+      transparent: true,
+    })
   );
   bottomPlane.position.y = boxMin;
-  bottomPlane.rotation.x = -Math.PI/2;
+  bottomPlane.rotation.x = -Math.PI / 2;
   scene.add(bottomPlane);
 }
 drawPlanes();
@@ -319,7 +391,7 @@ function updateBall(time: DOMHighResTimeStamp) {
 /**
  * Set the camera's Field of View as requested.
  * Then move the camera to a reasonable distance based on the new FOV.
- * 
+ *
  * This is implementing a dolly zoom.
  * The front of the box should always stay the same.
  * fov is a way of specifying the zoom.
