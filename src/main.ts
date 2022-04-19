@@ -154,6 +154,11 @@ function drawText() {
     new THREE.MeshPhongMaterial({ color: 0x000000 }), // side
   ];
 
+  const materialsBack = [
+    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
+    new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
+  ];
+
   const group = new THREE.Group();
   group.position.y = 100;
   scene.add(group);
@@ -167,18 +172,19 @@ function drawText() {
      */
     const padding = 0.2;
 
-    /**
-     * This is the extra dimension we are adding by extruding the text.
-     */
-    const height = padding;
-
-    function makeWords(text?: string) {
+    function makeWords(backWall : boolean, text?: string) {
       if (!text) {
         text =
           pick(batmanFightWords) +
           "!".repeat(Math.floor(Math.random() * 3) + 1);
       }
-      const textGeo = new TextGeometry(text, {
+
+    /**
+     * This is the extra dimension we are adding by extruding the text.
+     */
+     const height = backWall?20:padding;
+
+     const textGeo = new TextGeometry(text, {
         font: font,
 
         size: 3,
@@ -195,9 +201,9 @@ function drawText() {
       const centerOffset =
         -0.5 * (textGeo.boundingBox!.max.x - textGeo.boundingBox!.min.x);
 
-      const textMesh = new THREE.Mesh(textGeo, materials);
+      const textMesh = new THREE.Mesh(textGeo, backWall?materialsBack:materials);
 
-      return { centerOffset, textMesh };
+      return { centerOffset, textMesh, height };
     }
     // position and rotation are both relative to
     // * The left side of the text.
@@ -208,7 +214,7 @@ function drawText() {
     (window as any).textMeshes = debug;
 
     {
-      const { textMesh, centerOffset } = makeWords("back");
+      const { textMesh, centerOffset, height } = makeWords(true);
       textMesh.position.x = centerOffset;
       textMesh.position.y = boxMin;
       textMesh.position.z = boxMin - height + padding;
@@ -217,7 +223,7 @@ function drawText() {
     }
 
     {
-      const { textMesh, centerOffset } = makeWords("left");
+      const { textMesh, centerOffset, height } = makeWords(false);
       textMesh.position.z = -centerOffset;
       textMesh.position.y = boxMin;
       textMesh.position.x = boxMin - height + padding;
@@ -227,7 +233,7 @@ function drawText() {
     }
 
     {
-      const { textMesh, centerOffset } = makeWords("right");
+      const { textMesh, centerOffset, height } = makeWords(false);
       textMesh.position.z = centerOffset;
       textMesh.position.y = boxMin;
       textMesh.position.x = -(boxMin - height + padding);
@@ -237,7 +243,7 @@ function drawText() {
     }
 
     {
-      const { textMesh, centerOffset } = makeWords("top");
+      const { textMesh, centerOffset, height } = makeWords(false);
       textMesh.position.x = centerOffset;
       textMesh.position.z = boxMin;
       textMesh.position.y = -(boxMin - height + padding);
@@ -247,7 +253,7 @@ function drawText() {
     }
 
     {
-      const { textMesh, centerOffset } = makeWords("bottom");
+      const { textMesh, centerOffset, height } = makeWords(false);
       textMesh.position.x = centerOffset;
       textMesh.position.z = boxMax;
       textMesh.position.y = boxMin - height + padding;
