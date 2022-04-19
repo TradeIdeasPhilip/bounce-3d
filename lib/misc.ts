@@ -89,7 +89,7 @@ export function pickAny<T>(set: ReadonlySet<T>): T | undefined {
  * @returns A randomly selected element of the array.
  * @throws An error if the array is empty.
  */
-export function pick<T>(array: readonly T[]): T {
+export function pick<T>(array: ArrayLike<T>): T {
   return array[(Math.random() * array.length) | 0];
 }
 

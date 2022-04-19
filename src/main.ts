@@ -3,8 +3,21 @@ import * as THREE from "three";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 
+import optimerBold from "three/examples/fonts/optimer_bold.typeface.json?url";
+import optimerRegular from "three/examples/fonts/optimer_regular.typeface.json?url";
+
 import { getById } from "../lib/client-misc";
-import { FIGURE_SPACE } from "../lib/misc";
+import { FIGURE_SPACE, pick } from "../lib/misc";
+
+// Source:  https://methodshop.com/batman-fight-words/
+import batmanFightWords from "./batman-fight-words.json";
+
+// TODO TODO TODO
+// * Make arrows work on android.  SVG?
+//   http://thenewcode.com/1068/Making-Arrows-in-SVG
+//   https://www.svgviewer.dev/s/11868/arrow-right-1
+// * Find the text!!!  It was printed, just somewhere odd.  looked high and huge, but it was distorted so who knows for sure
+//   Set FOV to 100 or more and you'll see the text.
 
 const canvas = getById("canvas", HTMLCanvasElement);
 const canvasHolder = getById("canvasHolder", HTMLDivElement);
@@ -147,11 +160,11 @@ function drawText() {
 
   const loader = new FontLoader();
   loader.load(
-    "fonts/optimer_regular.typeface.json",
+    optimerRegular,
     function (response) {
       const font = response;
 
-      const textGeo = new TextGeometry("Pow!!", {
+      const textGeo = new TextGeometry(pick(batmanFightWords) + "!!", {
         font: font,
 
         size: 70,
