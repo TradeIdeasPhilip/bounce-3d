@@ -15,8 +15,8 @@ import gentilisRegular from "three/examples/fonts/gentilis_regular.typeface.json
 import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?url";
 import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
-import { getById } from "../lib/client-misc";
-import { FIGURE_SPACE, pick } from "../lib/misc";
+import { getById } from "./lib/client-misc";
+import { FIGURE_SPACE, pick } from "./lib/misc";
 
 // Source:  https://methodshop.com/batman-fight-words/
 import batmanFightWords from "./batman-fight-words.json";
