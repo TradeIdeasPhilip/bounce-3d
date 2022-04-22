@@ -23,7 +23,7 @@ I'd like to play with the lights and shadows and reflections more.
 * `npm run dev`
 * Click on the link displayed in your terminal.
 ## How to Build for Production
-`tsc && npx vite build`
+`npm run build`
 
 For more info:  https://vitejs.dev/guide/#command-line-interface.
 
