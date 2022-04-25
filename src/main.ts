@@ -2,6 +2,8 @@ import "./style.css";
 import * as THREE from "three";
 import { Font, FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+import rough from "roughjs";
+import { Options } from "roughjs/bin/core";
 
 import optimerBold from "three/examples/fonts/optimer_bold.typeface.json?url";
 import optimerRegular from "three/examples/fonts/optimer_regular.typeface.json?url";
@@ -357,22 +359,32 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
 
 const workingCanvas = getById("workingCanvas", HTMLCanvasElement);
 const workingContext = workingCanvas.getContext("2d")!;
+const workingRough = rough.canvas(workingCanvas);
 
-async function makeWall(fillColor : string, strokeColor : string) {
+async function makeWall(fillColor: string, strokeColor: string) {
   workingContext.fillStyle = fillColor;
-  workingContext.fillRect(0, 0, 300, 300);
-  workingContext.strokeStyle = strokeColor;
-  workingContext.lineWidth = 10;
-  workingContext.lineCap = "round";
-  workingContext.moveTo(15, 100);
-  workingContext.lineTo(285, 100);
-  workingContext.moveTo(15, 200);
-  workingContext.lineTo(285, 200);
-  workingContext.moveTo(100, 15);
-  workingContext.lineTo(100, 285);
-  workingContext.moveTo(200, 15);
-  workingContext.lineTo(200, 285);
-  workingContext.stroke();
+  const margin = 30;
+  const width = workingCanvas.width;
+  const height = workingCanvas.height;
+  workingContext.fillRect(0, 0, width, height);
+
+  const options: Options = {
+    stroke: strokeColor,
+    strokeWidth: 10,
+    roughness: 3,
+    bowing: 3,
+  };
+  workingRough.line(margin, height / 3, width - margin, height / 3, options);
+  workingRough.line(
+    margin,
+    (height * 2) / 3,
+    width - margin,
+    (height * 2) / 3,
+    options
+  );
+  workingRough.line(width /3, margin, width/3, height - margin, options);
+  workingRough.line(width*2 /3, margin, width*2/3, height - margin, options);
+
   const toBlobStatus = makePromise<Blob>();
   workingCanvas.toBlob((blob) => {
     if (!blob) {
@@ -393,18 +405,18 @@ async function makeWall(fillColor : string, strokeColor : string) {
         transparent: true,
       })
     );
-    return plane;   
+    return plane;
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
 const walls = {
-  rear : new THREE.Group(),
-  left : new THREE.Group(),
-  right : new THREE.Group(),
-  top : new THREE.Group(),
-  bottom : new THREE.Group(),
+  rear: new THREE.Group(),
+  left: new THREE.Group(),
+  right: new THREE.Group(),
+  top: new THREE.Group(),
+  bottom: new THREE.Group(),
 };
 scene.add(walls.rear, walls.left, walls.right, walls.top, walls.bottom);
 
@@ -424,6 +436,8 @@ walls.bottom.rotation.x = -Math.PI / 2;
 
 async function drawPlanes() {
   // Is this enough?  Seems like we need to clean up some of the objects.  TODO
+  // Instructions for disposing of three.js objects:
+  // https://threejs.org/docs/index.html#manual/en/introduction/How-to-dispose-of-objects
   walls.rear.clear();
   walls.rear.add(await makeWall("#ff0000", "#ff8080"));
 
