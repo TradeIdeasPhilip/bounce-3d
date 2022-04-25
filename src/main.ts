@@ -16,7 +16,7 @@ import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?u
 import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
 import { getById } from "./lib/client-misc";
-import { FIGURE_SPACE, pick } from "./lib/misc";
+import { FIGURE_SPACE, makePromise, pick } from "./lib/misc";
 
 // Source:  https://methodshop.com/batman-fight-words/
 import batmanFightWords from "./batman-fight-words.json";
@@ -82,7 +82,7 @@ function addGrids() {
   gridHelperBack.position.z = boxMin;
   //scene.add(gridHelperBack);
 }
-addGrids();
+//addGrids();
 
 const dimensions = ["x", "y", "z"] as const;
 
@@ -358,11 +358,10 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
 const workingCanvas = getById("workingCanvas", HTMLCanvasElement);
 const workingContext = workingCanvas.getContext("2d")!;
 
-function drawPlanes() {
-
-  workingContext.fillStyle = "#ff0000";
+async function makeWall(fillColor : string, strokeColor : string) {
+  workingContext.fillStyle = fillColor;
   workingContext.fillRect(0, 0, 300, 300);
-  workingContext.strokeStyle = "#ff8080";
+  workingContext.strokeStyle = strokeColor;
   workingContext.lineWidth = 10;
   workingContext.lineCap = "round";
   workingContext.moveTo(15, 100);
@@ -374,68 +373,53 @@ function drawPlanes() {
   workingContext.moveTo(200, 15);
   workingContext.lineTo(200, 285);
   workingContext.stroke();
-
+  const toBlobStatus = makePromise<Blob>();
   workingCanvas.toBlob((blob) => {
     if (!blob) {
-      console.warn("!blob");
+      toBlobStatus.reject(new Error("workingCanvas.toBlob() failed!"));
     } else {
-      const url = URL.createObjectURL(blob);
-      // TODO URL.revokeObjectURL(url);
-      const texture = new THREE.TextureLoader().load(url);
-      const rearPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(boxSize, boxSize),
-        new THREE.MeshBasicMaterial({
-          map: texture,
-          opacity: 0.5,
-          transparent: true,
-        })
-      );
-      rearPlane.position.z = boxMin;
-      scene.add(rearPlane);
+      toBlobStatus.resolve(blob);
     }
   });
+  const blob = await toBlobStatus.promise;
+  const url = URL.createObjectURL(blob);
+  try {
+    const texture = await new THREE.TextureLoader().loadAsync(url);
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(boxSize, boxSize),
+      new THREE.MeshBasicMaterial({
+        map: texture,
+        opacity: 0.5,
+        transparent: true,
+      })
+    );
+    return plane;   
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
-  const leftPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(boxSize, boxSize),
-    new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
-      opacity: 0.5,
-      transparent: true,
-    })
-  );
+async function drawPlanes() {
+  const rearPlane = await makeWall("#ff0000", "#ffc0c0");
+  rearPlane.position.z = boxMin;
+  scene.add(rearPlane);
+
+  const leftPlane = await makeWall("#00ff00", "#c0ffc0");
   leftPlane.position.x = boxMin;
   leftPlane.rotation.y = Math.PI / 2;
   scene.add(leftPlane);
-  const rightPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(boxSize, boxSize),
-    new THREE.MeshBasicMaterial({
-      color: 0x0000ff,
-      opacity: 0.5,
-      transparent: true,
-    })
-  );
+
+  const rightPlane = await makeWall("#0000ff", "#c0c0ff");
   rightPlane.position.x = boxMax;
   rightPlane.rotation.y = -Math.PI / 2;
   scene.add(rightPlane);
-  const topPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(boxSize, boxSize),
-    new THREE.MeshBasicMaterial({
-      color: 0xffff00,
-      opacity: 0.5,
-      transparent: true,
-    })
-  );
+
+  const topPlane = await makeWall("#ffff00", "#ffffc0");
   topPlane.position.y = boxMax;
   topPlane.rotation.x = Math.PI / 2;
   scene.add(topPlane);
-  const bottomPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(boxSize, boxSize),
-    new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.5,
-      transparent: true,
-    })
-  );
+
+  const bottomPlane = await makeWall("#00ffff", "#c0ffff");
   bottomPlane.position.y = boxMin;
   bottomPlane.rotation.x = -Math.PI / 2;
   scene.add(bottomPlane);
