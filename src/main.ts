@@ -399,30 +399,45 @@ async function makeWall(fillColor : string, strokeColor : string) {
   }
 }
 
+const walls = {
+  rear : new THREE.Group(),
+  left : new THREE.Group(),
+  right : new THREE.Group(),
+  top : new THREE.Group(),
+  bottom : new THREE.Group(),
+};
+scene.add(walls.rear, walls.left, walls.right, walls.top, walls.bottom);
+
+walls.rear.position.z = boxMin;
+
+walls.left.position.x = boxMin;
+walls.left.rotation.y = Math.PI / 2;
+
+walls.right.position.x = boxMax;
+walls.right.rotation.y = -Math.PI / 2;
+
+walls.top.position.y = boxMax;
+walls.top.rotation.x = Math.PI / 2;
+
+walls.bottom.position.y = boxMin;
+walls.bottom.rotation.x = -Math.PI / 2;
+
 async function drawPlanes() {
-  const rearPlane = await makeWall("#ff0000", "#ffc0c0");
-  rearPlane.position.z = boxMin;
-  scene.add(rearPlane);
+  // Is this enough?  Seems like we need to clean up some of the objects.  TODO
+  walls.rear.clear();
+  walls.rear.add(await makeWall("#ff0000", "#ff8080"));
 
-  const leftPlane = await makeWall("#00ff00", "#c0ffc0");
-  leftPlane.position.x = boxMin;
-  leftPlane.rotation.y = Math.PI / 2;
-  scene.add(leftPlane);
+  walls.left.clear();
+  walls.left.add(await makeWall("#00ff00", "#c0ffc0"));
 
-  const rightPlane = await makeWall("#0000ff", "#c0c0ff");
-  rightPlane.position.x = boxMax;
-  rightPlane.rotation.y = -Math.PI / 2;
-  scene.add(rightPlane);
+  walls.right.clear();
+  walls.right.add(await makeWall("#0000ff", "#c0c0ff"));
 
-  const topPlane = await makeWall("#ffff00", "#ffffc0");
-  topPlane.position.y = boxMax;
-  topPlane.rotation.x = Math.PI / 2;
-  scene.add(topPlane);
+  walls.top.clear();
+  walls.top.add(await makeWall("#ffff00", "#ffffc0"));
 
-  const bottomPlane = await makeWall("#00ffff", "#c0ffff");
-  bottomPlane.position.y = boxMin;
-  bottomPlane.rotation.x = -Math.PI / 2;
-  scene.add(bottomPlane);
+  walls.bottom.clear();
+  walls.bottom.add(await makeWall("#00ffff", "#c0ffff"));
 }
 drawPlanes();
 
