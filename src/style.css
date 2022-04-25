@@ -110,3 +110,15 @@ body {
   color: white;
   font-weight: bold;
 }
+
+#workingCanvasHolder {
+  background-color: black;
+  position: absolute;
+  z-index: 4;
+  top: 1em;
+  right: 1em;
+  display: flex;
+}
+#workingCanvas {
+  opacity: 50%;
+}

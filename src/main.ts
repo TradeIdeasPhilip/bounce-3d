@@ -80,7 +80,7 @@ function addGrids() {
   const gridHelperBack = new THREE.GridHelper(boxSize, 3);
   gridHelperBack.rotation.x = Math.PI / 2;
   gridHelperBack.position.z = boxMin;
-  scene.add(gridHelperBack);
+  //scene.add(gridHelperBack);
 }
 addGrids();
 
@@ -355,17 +355,46 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
   });
 }
 
+const workingCanvas = getById("workingCanvas", HTMLCanvasElement);
+const workingContext = workingCanvas.getContext("2d")!;
+
 function drawPlanes() {
-  const rearPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(boxSize, boxSize),
-    new THREE.MeshBasicMaterial({
-      color: 0xff0000,
-      opacity: 0.5,
-      transparent: true,
-    })
-  );
-  rearPlane.position.z = boxMin;
-  scene.add(rearPlane);
+
+  workingContext.fillStyle = "#ff0000";
+  workingContext.fillRect(0, 0, 300, 300);
+  workingContext.strokeStyle = "#ff8080";
+  workingContext.lineWidth = 10;
+  workingContext.lineCap = "round";
+  workingContext.moveTo(15, 100);
+  workingContext.lineTo(285, 100);
+  workingContext.moveTo(15, 200);
+  workingContext.lineTo(285, 200);
+  workingContext.moveTo(100, 15);
+  workingContext.lineTo(100, 285);
+  workingContext.moveTo(200, 15);
+  workingContext.lineTo(200, 285);
+  workingContext.stroke();
+
+  workingCanvas.toBlob((blob) => {
+    if (!blob) {
+      console.warn("!blob");
+    } else {
+      const url = URL.createObjectURL(blob);
+      // TODO URL.revokeObjectURL(url);
+      const texture = new THREE.TextureLoader().load(url);
+      const rearPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(boxSize, boxSize),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          opacity: 0.5,
+          transparent: true,
+        })
+      );
+      rearPlane.position.z = boxMin;
+      scene.add(rearPlane);
+    }
+  });
+
   const leftPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(boxSize, boxSize),
     new THREE.MeshBasicMaterial({
