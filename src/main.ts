@@ -361,99 +361,140 @@ const workingCanvas = getById("workingCanvas", HTMLCanvasElement);
 const workingContext = workingCanvas.getContext("2d")!;
 const workingRough = rough.canvas(workingCanvas);
 
-async function makeWall(fillColor: string, strokeColor: string) {
-  workingContext.fillStyle = fillColor;
-  const margin = 30;
-  const width = workingCanvas.width;
-  const height = workingCanvas.height;
-  workingContext.fillRect(0, 0, width, height);
-
-  const options: Options = {
-    stroke: strokeColor,
-    strokeWidth: 10,
-    roughness: 3,
-    bowing: 3,
-  };
-  workingRough.line(margin, height / 3, width - margin, height / 3, options);
-  workingRough.line(
-    margin,
-    (height * 2) / 3,
-    width - margin,
-    (height * 2) / 3,
-    options
-  );
-  workingRough.line(width /3, margin, width/3, height - margin, options);
-  workingRough.line(width*2 /3, margin, width*2/3, height - margin, options);
-
-  const toBlobStatus = makePromise<Blob>();
-  workingCanvas.toBlob((blob) => {
-    if (!blob) {
-      toBlobStatus.reject(new Error("workingCanvas.toBlob() failed!"));
-    } else {
-      toBlobStatus.resolve(blob);
-    }
-  });
-  const blob = await toBlobStatus.promise;
-  const url = URL.createObjectURL(blob);
-  try {
-    const texture = await new THREE.TextureLoader().loadAsync(url);
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(boxSize, boxSize),
-      new THREE.MeshBasicMaterial({
-        map: texture,
-        opacity: 0.5,
-        transparent: true,
-      })
-    );
-    return plane;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-const walls = {
-  rear: new THREE.Group(),
-  left: new THREE.Group(),
-  right: new THREE.Group(),
-  top: new THREE.Group(),
-  bottom: new THREE.Group(),
+type WallInfo = {
+  readonly fillColor: string;
+  readonly strokeColor: string;
+  flatten(input: THREE.Vector3): THREE.Vector2;
+  init(group: THREE.Group): void;
 };
-scene.add(walls.rear, walls.left, walls.right, walls.top, walls.bottom);
 
-walls.rear.position.z = boxMin;
+class Wall {
+  #group = new THREE.Group();
+  constructor(private readonly info: WallInfo) {
+    info.init(this.#group);
+    scene.add(this.#group);
+    this.makeWall();
+  }
 
-walls.left.position.x = boxMin;
-walls.left.rotation.y = Math.PI / 2;
+  protected async makeWall() {
+    workingContext.fillStyle = this.info.fillColor;
+    const margin = 30;
+    const width = workingCanvas.width;
+    const height = workingCanvas.height;
+    workingContext.fillRect(0, 0, width, height);
 
-walls.right.position.x = boxMax;
-walls.right.rotation.y = -Math.PI / 2;
+    const options: Options = {
+      stroke: this.info.strokeColor,
+      strokeWidth: 10,
+      roughness: 3,
+      bowing: 3,
+    };
+    workingRough.line(margin, height / 3, width - margin, height / 3, options);
+    workingRough.line(
+      margin,
+      (height * 2) / 3,
+      width - margin,
+      (height * 2) / 3,
+      options
+    );
+    workingRough.line(width / 3, margin, width / 3, height - margin, options);
+    workingRough.line(
+      (width * 2) / 3,
+      margin,
+      (width * 2) / 3,
+      height - margin,
+      options
+    );
 
-walls.top.position.y = boxMax;
-walls.top.rotation.x = Math.PI / 2;
+    const toBlobStatus = makePromise<Blob>();
+    workingCanvas.toBlob((blob) => {
+      if (!blob) {
+        toBlobStatus.reject(new Error("workingCanvas.toBlob() failed!"));
+      } else {
+        toBlobStatus.resolve(blob);
+      }
+    });
+    const blob = await toBlobStatus.promise;
+    const url = URL.createObjectURL(blob);
+    try {
+      const texture = await new THREE.TextureLoader().loadAsync(url);
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(boxSize, boxSize),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          opacity: 0.5,
+          transparent: true,
+        })
+      );
+      // Is clear() enough?  Seems like we need to clean up some of the objects.  TODO
+      // Instructions for disposing of three.js objects:
+      // https://threejs.org/docs/index.html#manual/en/introduction/How-to-dispose-of-objects`
+      this.#group.clear();
+      this.#group.add(plane);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
 
-walls.bottom.position.y = boxMin;
-walls.bottom.rotation.x = -Math.PI / 2;
+  static readonly rear = new Wall({
+    fillColor: "#ff0000",
+    strokeColor: "#ff8080",
+    flatten(input) {
+      return new THREE.Vector2(input.x, input.y);
+    },
+    init(group) {
+      group.position.z = boxMin;
+    },
+  });
 
-async function drawPlanes() {
-  // Is this enough?  Seems like we need to clean up some of the objects.  TODO
-  // Instructions for disposing of three.js objects:
-  // https://threejs.org/docs/index.html#manual/en/introduction/How-to-dispose-of-objects
-  walls.rear.clear();
-  walls.rear.add(await makeWall("#ff0000", "#ff8080"));
+  static readonly left = new Wall({
+    fillColor: "#00ff00",
+    strokeColor: "#c0ffc0",
+    flatten(input) {
+      return new THREE.Vector2(-input.z, input.y);
+    },
+    init(group) {
+      group.position.x = boxMin;
+      group.rotation.y = Math.PI / 2;
+    },
+  });
 
-  walls.left.clear();
-  walls.left.add(await makeWall("#00ff00", "#c0ffc0"));
+  static readonly right = new Wall({
+    fillColor: "#0000ff",
+    strokeColor: "#c0c0ff",
+    flatten(input) {
+      return new THREE.Vector2(input.z, input.y);
+    },
+    init(group) {
+      group.position.x = boxMax;
+      group.rotation.y = -Math.PI / 2;
+    },
+  });
 
-  walls.right.clear();
-  walls.right.add(await makeWall("#0000ff", "#c0c0ff"));
+  static readonly top = new Wall({
+    fillColor: "#ffff00",
+    strokeColor: "#ffffc0",
+    flatten(input) {
+      return new THREE.Vector2(input.x, -input.z);
+    },
+    init(group) {
+      group.position.y = boxMax;
+      group.rotation.x = Math.PI / 2;
+    },
+  });
 
-  walls.top.clear();
-  walls.top.add(await makeWall("#ffff00", "#ffffc0"));
-
-  walls.bottom.clear();
-  walls.bottom.add(await makeWall("#00ffff", "#c0ffff"));
+  static readonly bottom = new Wall({
+    fillColor: "#00ffff",
+    strokeColor: "#c0ffff",
+    flatten(input) {
+      return new THREE.Vector2(input.x, input.z);
+    },
+    init(group) {
+      group.position.y = boxMin;
+      group.rotation.x = -Math.PI / 2;
+    },
+  });
 }
-drawPlanes();
 
 function makeMarker(x = 0, y = 0, z = 0) {
   const geometry = new THREE.SphereGeometry(1, 24, 24);
