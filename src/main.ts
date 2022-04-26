@@ -367,12 +367,28 @@ type WallInfo = {
 class Wall {
   #group = new THREE.Group();
   #canvas = document.createElement("canvas");
+  #texture = new THREE.CanvasTexture(this.#canvas);
+  #plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(boxSize, boxSize),
+    new THREE.MeshBasicMaterial({
+      map: this.#texture,
+      opacity: 0.5,
+      transparent: true,
+    })
+  );
   constructor(private readonly info: WallInfo) {
     info.init(this.#group);
     scene.add(this.#group);
     this.#canvas.width = 600;
     this.#canvas.height = 600;
     this.makeWall();
+    this.#group.add(this.#plane);
+  }
+
+  highlightPoint(point : THREE.Vector3) {
+    const { x, y } = this.info.flatten(point);
+    this.makeWall();
+
   }
 
   protected makeWall() {
@@ -407,24 +423,7 @@ class Wall {
       options
     );
 
-    const imageData = context.getImageData(0, 0, this.#canvas.width, this.#canvas.height);
-    const texture = new THREE.CanvasTexture(this.#canvas);
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(boxSize, boxSize),
-      new THREE.MeshBasicMaterial({
-        map: texture,
-        opacity: 0.5,
-        transparent: true,
-      })
-    );
-    // Is clear() enough?  Seems like we need to clean up some of the objects.  TODO
-    // Instructions for disposing of three.js objects:
-    // https://threejs.org/docs/index.html#manual/en/introduction/How-to-dispose-of-objects`
-    this.#group.clear();
-    this.#group.add(plane);
-
-    // TODO Call       texture.needsUpdate = true;
-    // any time you need to copy the contents of the canvas into the texture.
+    this.#texture.needsUpdate = true;
   }
 
   static readonly rear = new Wall({
@@ -485,6 +484,25 @@ class Wall {
       group.rotation.x = -Math.PI / 2;
     },
   });
+
+  static find(dimension : "x"|"y"|"z", position : number) : Wall | undefined {
+    if (position < 0) {
+      if (dimension == "x") {
+        return this.left;
+      } else if (dimension == "y") {
+        return this.top;
+      } else if (dimension == "z") {
+        return this.rear;
+      }
+    } else {
+      if (dimension == "x") {
+        return this.right;
+      } else if (dimension == "y") {
+        return this.bottom;
+      }
+    }
+    return;
+  }
 }
 
 function makeMarker(x = 0, y = 0, z = 0) {
@@ -541,6 +559,7 @@ function updateBall(time: DOMHighResTimeStamp) {
         scene.add(wall);
         wallTimeout.set(wall, time + 100);
         drawOnWall(dimension, "min");
+        Wall.find(dimension, ballMin)?.highlightPoint(ball.position);
       } else if (newValue > ballMax) {
         newValue = ballMax;
         ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
@@ -548,6 +567,7 @@ function updateBall(time: DOMHighResTimeStamp) {
         scene.add(wall);
         wallTimeout.set(wall, time + 100);
         drawOnWall(dimension, "max");
+        Wall.find(dimension, ballMax)?.highlightPoint(ball.position);
       }
       ball.position[dimension] = newValue;
     }
