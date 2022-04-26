@@ -18,7 +18,7 @@ import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?u
 import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
 import { getById } from "./lib/client-misc";
-import { FIGURE_SPACE, makePromise, pick } from "./lib/misc";
+import { FIGURE_SPACE, pick } from "./lib/misc";
 
 // Source:  https://methodshop.com/batman-fight-words/
 import batmanFightWords from "./batman-fight-words.json";
@@ -357,10 +357,6 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
   });
 }
 
-const workingCanvas = getById("workingCanvas", HTMLCanvasElement);
-const workingContext = workingCanvas.getContext("2d")!;
-const workingRough = rough.canvas(workingCanvas);
-
 type WallInfo = {
   readonly fillColor: string;
   readonly strokeColor: string;
@@ -370,18 +366,23 @@ type WallInfo = {
 
 class Wall {
   #group = new THREE.Group();
+  #canvas = document.createElement("canvas");
   constructor(private readonly info: WallInfo) {
     info.init(this.#group);
     scene.add(this.#group);
+    this.#canvas.width = 600;
+    this.#canvas.height = 600;
     this.makeWall();
   }
 
-  protected async makeWall() {
-    workingContext.fillStyle = this.info.fillColor;
+  protected makeWall() {
+    const context = this.#canvas.getContext("2d")!;
+    context.fillStyle = this.info.fillColor;
     const margin = 30;
-    const width = workingCanvas.width;
-    const height = workingCanvas.height;
-    workingContext.fillRect(0, 0, width, height);
+    const width = this.#canvas.width;
+    const height = this.#canvas.height;
+    const roughCanvas = rough.canvas(this.#canvas);
+    context.fillRect(0, 0, width, height);
 
     const options: Options = {
       stroke: this.info.strokeColor,
@@ -389,16 +390,16 @@ class Wall {
       roughness: 3,
       bowing: 3,
     };
-    workingRough.line(margin, height / 3, width - margin, height / 3, options);
-    workingRough.line(
+    roughCanvas.line(margin, height / 3, width - margin, height / 3, options);
+    roughCanvas.line(
       margin,
       (height * 2) / 3,
       width - margin,
       (height * 2) / 3,
       options
     );
-    workingRough.line(width / 3, margin, width / 3, height - margin, options);
-    workingRough.line(
+    roughCanvas.line(width / 3, margin, width / 3, height - margin, options);
+    roughCanvas.line(
       (width * 2) / 3,
       margin,
       (width * 2) / 3,
@@ -406,34 +407,24 @@ class Wall {
       options
     );
 
-    const toBlobStatus = makePromise<Blob>();
-    workingCanvas.toBlob((blob) => {
-      if (!blob) {
-        toBlobStatus.reject(new Error("workingCanvas.toBlob() failed!"));
-      } else {
-        toBlobStatus.resolve(blob);
-      }
-    });
-    const blob = await toBlobStatus.promise;
-    const url = URL.createObjectURL(blob);
-    try {
-      const texture = await new THREE.TextureLoader().loadAsync(url);
-      const plane = new THREE.Mesh(
-        new THREE.PlaneGeometry(boxSize, boxSize),
-        new THREE.MeshBasicMaterial({
-          map: texture,
-          opacity: 0.5,
-          transparent: true,
-        })
-      );
-      // Is clear() enough?  Seems like we need to clean up some of the objects.  TODO
-      // Instructions for disposing of three.js objects:
-      // https://threejs.org/docs/index.html#manual/en/introduction/How-to-dispose-of-objects`
-      this.#group.clear();
-      this.#group.add(plane);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    const imageData = context.getImageData(0, 0, this.#canvas.width, this.#canvas.height);
+    const texture = new THREE.CanvasTexture(this.#canvas);
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(boxSize, boxSize),
+      new THREE.MeshBasicMaterial({
+        map: texture,
+        opacity: 0.5,
+        transparent: true,
+      })
+    );
+    // Is clear() enough?  Seems like we need to clean up some of the objects.  TODO
+    // Instructions for disposing of three.js objects:
+    // https://threejs.org/docs/index.html#manual/en/introduction/How-to-dispose-of-objects`
+    this.#group.clear();
+    this.#group.add(plane);
+
+    // TODO Call       texture.needsUpdate = true;
+    // any time you need to copy the contents of the canvas into the texture.
   }
 
   static readonly rear = new Wall({
