@@ -18,20 +18,48 @@ import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?u
 import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
 import { getById } from "./lib/client-misc";
-import { FIGURE_SPACE, pick } from "./lib/misc";
+import { FIGURE_SPACE, makeLinear, pick } from "./lib/misc";
 
 // Source:  https://methodshop.com/batman-fight-words/
 import batmanFightWords from "./batman-fight-words.json";
+
+// Coordinates in the 3d world:
+// x=0 is the center of the viewing area / box.
+// Positive x moves to the right, negative x moves to the left, just like in algebra class.
+// y=0 is the center of the viewing area / box.
+// Positive y moves up, negative y moves down, just like in algebra class.
+// (But the opposite of the canvas!)
+// z=0 is the center of the viewing area / box.
+// Positive z moves toward the camera.  Negative z moves toward the horizon.
 
 // TODO TODO TODO
 // * Make arrows work on android.  SVG?
 //   http://thenewcode.com/1068/Making-Arrows-in-SVG
 //   https://www.svgviewer.dev/s/11868/arrow-right-1
 
+/**
+ * The main canvas where we display the 3d scene.
+ */
 const canvas = getById("canvas", HTMLCanvasElement);
+
+/**
+ * We put the canvas into a div to help with the layout magic.
+ * Whenever the canvasHolder gets resized (e.g. you rotate your phone 90°) 
+ * we call code to resize the canvas **and** the renderer.
+ * The canvas has has `position` set to `absolute` so its size 
+ * does not automatically change.
+ * And when we manually change the canvas's size, that will not cause an other changes in the document.
+ */
 const canvasHolder = getById("canvasHolder", HTMLDivElement);
 
 const scene = new THREE.Scene();
+
+/**
+ * A standard camera.
+ * 
+ * Some of these values are just placeholders.
+ * See setCameraPosition() for the actual values.
+ */
 const camera = new THREE.PerspectiveCamera(
   45,
   canvas.offsetWidth / canvas.offsetHeight,
@@ -44,22 +72,46 @@ const renderer = new THREE.WebGLRenderer({
 });
 
 renderer.setPixelRatio(window.devicePixelRatio);
-// Is the next line right?  Seems like circular logic!
-// I copied this from code that was resizing the canvas based on the size of the window.
 renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
 
+/**
+ * The lights were all copied from various demos.
+ * They don't do much, yet.
+ * You can see the highlights change as the ball moves, but it's subtle.
+
+* I.e. this is just a placeholder until I learn more about lights!
+ */
 const pointLight = new THREE.PointLight(0xffffff);
 pointLight.position.set(5, 5, 5);
 
 const ambientLight = new THREE.AmbientLight(0xffffff);
 scene.add(pointLight, ambientLight);
 
+/**
+ * The largest position we care about in the 3d coordinates.
+ * 0 is the center of the box.
+ */
 const boxMax = 14;
-const boxMin = -boxMax;
+
+/**
+ * The smallest position we care about in the 3d coordinates.
+ * 0 is the center of the box.
+ */
+ const boxMin = -boxMax;
+
+/**
+ * The size of the box where the ball is bouncing, in 3d coordinates.
+ */
 const boxSize = boxMax - boxMin;
 
 //const lightHelper = new THREE.PointLightHelper(pointLight);
 
+/**
+ * Draw the walls of the box using GridHelper.
+ * 
+ * This was the first way I drew the walls because I copied it from some sample code.
+ * See the Wall class for the way we draw stuff now.
+ */
 function addGrids() {
   const gridHelperBottom = new THREE.GridHelper(boxSize, 3);
   gridHelperBottom.position.y = boxMin;
@@ -88,6 +140,12 @@ function addGrids() {
 
 const dimensions = ["x", "y", "z"] as const;
 
+/**
+ * Use these to show when the ball hits a wall.
+ * 
+ * I started with GridHelper because it was easy.
+ * This is slowly being replaced by the 3d words and other effects.
+ */
 const flashyWalls = {
   x: {
     min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
@@ -102,6 +160,7 @@ const flashyWalls = {
     max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
   },
 };
+// Don't copy this logic!  Use Wall.#group for new code.
 flashyWalls.x.min.rotation.z = Math.PI / 2;
 flashyWalls.x.max.rotation.z = Math.PI / 2;
 flashyWalls.z.min.rotation.x = Math.PI / 2;
@@ -111,36 +170,33 @@ dimensions.forEach((dimension) => {
   flashyWalls[dimension].max.position[dimension] = boxMax;
 });
 
-// x=0 is currently in the center of the viewport.
-// Positive x moves to the right, negative x moves to the left, just like in algebra class.
-// y=0 is on the grid.
-// Positive y moves up, negative y moves down, just line kin algebra class.
-// z=0 is the center of the grid.
-// Positive z moves toward the camera.  Negative z moves toward the horizon.
-
-function drawLines() {
-  const material = new THREE.LineBasicMaterial({ color: 0x0000ff });
-  const points = [];
-  points.push(new THREE.Vector3(-10, 0, 0));
-  points.push(new THREE.Vector3(0, 10, 0));
-  points.push(new THREE.Vector3(10, 0, 0));
-
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const line = new THREE.Line(geometry, material);
-  scene.add(line);
-}
-//drawLines();
-
+/**
+ * Use this to draw the words on the side walls.
+ * 
+ * White on the front, black on the sides.
+ * These words sit just outside the wall and should look black and white.
+ */
 const materials = [
   new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
   new THREE.MeshPhongMaterial({ color: 0x000000 }), // side
 ];
 
+/**
+ * Use this to draw the words on the rear wall.
+ * 
+ * White everywhere.
+ * These words just barely poke out from behind the wall.
+ * The extruded part is almost entirely behind the wall, so the color will be a combination of white and the color of the wall.
+ * The words themselves will be white.
+ */
 const materialsBack = [
   new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
   new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
 ];
 
+// I copied this from an example.
+// I think it has a small effect on the ball.
+// This should be tweaked with the lights and the shadows.
 scene.fog = new THREE.Fog(0x000000, 250, 1400);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
@@ -152,116 +208,12 @@ const pointLight1 = new THREE.PointLight(0xffffff, 1.5);
 pointLight.position.set(0, 100, 90);
 scene.add(pointLight1);
 
-function drawText() {
-  const group = new THREE.Group();
-  group.position.y = 100;
-  scene.add(group);
-
-  const loader = new FontLoader();
-  loader.load(optimerRegular, function (font) {
-    /**
-     * We're putting two surfaces at the same place.
-     * It's somewhat random which gets picked, and it changes constantly with the zoom.
-     * So we move the text just a little bit inside the box, so make sure it is visible.
-     */
-    const padding = 0.2;
-
-    function makeWords(backWall: boolean, text?: string) {
-      if (!text) {
-        text =
-          pick(batmanFightWords) +
-          "!".repeat(Math.floor(Math.random() * 3) + 1);
-      }
-
-      /**
-       * This is the extra dimension we are adding by extruding the text.
-       */
-      const height = backWall ? 20 : padding;
-
-      const textGeo = new TextGeometry(text, {
-        font: font,
-
-        size: 3,
-        height,
-        curveSegments: 4,
-
-        bevelThickness: 0.25,
-        bevelSize: 0.25,
-        bevelEnabled: false,
-      });
-
-      textGeo.computeBoundingBox();
-
-      const centerOffset =
-        -0.5 * (textGeo.boundingBox!.max.x - textGeo.boundingBox!.min.x);
-
-      const textMesh = new THREE.Mesh(
-        textGeo,
-        backWall ? materialsBack : materials
-      );
-
-      return { centerOffset, textMesh, height };
-    }
-    // position and rotation are both relative to
-    // * The left side of the text.
-    // * The baseline of the text, which may or my not be the lowest part.  qjy
-    // * And the back of the text.  The part that's furthest from the camera, if you can read the text.
-
-    const debug = {} as any;
-    (window as any).textMeshes = debug;
-
-    {
-      const { textMesh, centerOffset, height } = makeWords(true);
-      textMesh.position.x = centerOffset;
-      textMesh.position.y = boxMin;
-      textMesh.position.z = boxMin - height + padding;
-      scene.add(textMesh);
-      debug.back = textMesh;
-    }
-
-    {
-      const { textMesh, centerOffset, height } = makeWords(false);
-      textMesh.position.z = -centerOffset;
-      textMesh.position.y = boxMin;
-      textMesh.position.x = boxMin - height + padding;
-      textMesh.rotation.y = Math.PI / 2;
-      scene.add(textMesh);
-      debug.left = textMesh;
-    }
-
-    {
-      const { textMesh, centerOffset, height } = makeWords(false);
-      textMesh.position.z = centerOffset;
-      textMesh.position.y = boxMin;
-      textMesh.position.x = -(boxMin - height + padding);
-      textMesh.rotation.y = -Math.PI / 2;
-      scene.add(textMesh);
-      debug.right = textMesh;
-    }
-
-    {
-      const { textMesh, centerOffset, height } = makeWords(false);
-      textMesh.position.x = centerOffset;
-      textMesh.position.z = boxMin;
-      textMesh.position.y = -(boxMin - height + padding);
-      textMesh.rotation.x = Math.PI / 2;
-      scene.add(textMesh);
-      debug.top = textMesh;
-    }
-
-    {
-      const { textMesh, centerOffset, height } = makeWords(false);
-      textMesh.position.x = centerOffset;
-      textMesh.position.z = boxMax;
-      textMesh.position.y = boxMin - height + padding;
-      textMesh.rotation.x = -Math.PI / 2;
-      scene.add(textMesh);
-      debug.bottom = textMesh;
-    }
-  });
-}
-//drawText();
-
+/**
+ * Use these when displaying 3d extruded text.
+ * 
+ * Note that these get loaded from the internet when the program starts.
+ * So the list might be partially or completely empty, for a brief moment.
+ */
 const fonts: Font[] = [];
 [
   optimerBold,
@@ -281,9 +233,26 @@ const fonts: Font[] = [];
   });
 });
 
+/**
+ * This is cleanup code for the 3d words.
+ * 
+ * When we go to add new words, the first thing we do is remove any previous words that were already written on that wall.
+ * 
+ * TODO move all of this to the Wall class.
+ */
 const drawnOnWall = new Map<string, () => void>();
 
+/**
+ * Call this when the ball hits a wall so we can update the GUI.
+ * 
+ * This is what draws the 3d Batman fight words.
+ * @param bounceDimension Which wall
+ * @param side Which wall
+ */
 function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
+  // TODO move all of this into Wall.highlightPoint().
+  // This code always draws the words.
+  // Wall.highlightPoint() will include multiple options, and this should be one of them.
   if (fonts.length == 0) {
     return;
   }
@@ -332,6 +301,8 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
     bounceDimension == "z" ? materialsBack : materials
   );
 
+  // TODO use Wall.#group and WallInfo.flatten() to simplify this.
+  // The code below is a duplicate of some work we've done elsewhere.
   if (bounceDimension == "z") {
     textMesh.position.x = centerOffset + ball.position.x;
     textMesh.position.y = ball.position.y;
@@ -352,21 +323,94 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
   scene.add(textMesh);
 
   drawnOnWall.set(key, () => {
+    // Cleanup code.
     scene.remove(textMesh);
     textGeo.dispose();
   });
 }
 
+/**
+ * This is how you customize a wall.
+ * This is what makes one wall different from another.
+ */
 type WallInfo = {
+  /**
+   * The background color.  Any css color will do.
+   */
   readonly fillColor: string;
-  readonly strokeColor: string;
+  /**
+   * The foreground color.  Any css color will do.
+   */
+   readonly strokeColor: string;
+   /**
+    * Convert from the ball's coordinate system, to a coordinate system appropriate to the wall.
+    * Use this function to add 3d effects on a wall (like the batman words that use extruded text) without worrying about the fact that each wall faces a different direction.
+    * 
+    * Use Wall.flatten(), instead, if you want to draw on the canvas.
+    * WallInfo.flatten() is used to implement Wall.flatten().
+    * @param input A point in the ball's coordinates.
+    * @returns A point on the wall.
+    * There is no Z dimension because the wall is flat.
+    * If you set Z=0, this should match the 3d coordinates of the Wall.#group.
+    */
   flatten(input: THREE.Vector3): THREE.Vector2;
+  /**
+   * Move the group into the correct position.
+   * The group holds the wall and whatever 3d objects are attached to the wall.
+   * 
+   * flatten() and init() need to be consistent.
+   * The both describe the position of the wall.
+   */
   init(group: THREE.Group): void;
 };
 
 class Wall {
+  /**
+   * Width and height of the canvas.
+   * The number is arbitrary, but a higher number will have more precision and a higher cost.
+   * The canvas will be projected onto a surface that is not a square, so I don't know that there is any ideal value here.
+   */
+  protected static readonly canvasSize = 600;
+
+  /**
+   * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
+   * @param x The x coordinate that comes from WallInfo.flatten().x
+   * @returns The corresponding x coordinate on the canvas.
+   */
+  protected static readonly xToCanvas = makeLinear(boxMin, 0, boxMax, this.canvasSize);
+
+  /**
+   * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
+   * @param y The y coordinate that comes from WallInfo.flatten().y
+   * @returns The corresponding x coordinate on the canvas.
+   */
+   protected static readonly yToCanvas = makeLinear(boxMin, this.canvasSize, boxMax, 0);
+
+  /**
+   * This stores the position and rotation of the wall.
+   * 
+   * Put 3d objects into here if you want them to be relative to a specific wall.
+   * The x coordinate will always go from [wallMin, wallMax].
+   * The y coordinate will always go from [wallMin, wallMax].
+   * z = 0 is on the wall.
+   * Positive z will move toward (and possibly past) the center of the box and the opposite wall.
+   * Negative z will move outside and away from the box.
+   */
   #group = new THREE.Group();
+
+  /**
+   * Draw on this at any time.
+   * (Ideally but not necessarily in the animationFrame callback.)
+   * 
+   * Set `this.#texture.needsUpdate = true;` at any time to copy from the canvas to the 3d object.
+   * The copy will probably happen in the next animationFrame callback.
+   * 
+   * Each wall gets its own canvas because the update isn't done immediately.
+   * The canvas holds the image until the renderer is ready for it.
+   */
   #canvas = document.createElement("canvas");
+
+  #roughCanvas = rough.canvas(this.#canvas);
   #texture = new THREE.CanvasTexture(this.#canvas);
   #plane = new THREE.Mesh(
     new THREE.PlaneGeometry(boxSize, boxSize),
@@ -376,19 +420,37 @@ class Wall {
       transparent: true,
     })
   );
-  constructor(private readonly info: WallInfo) {
+  private constructor(private readonly info: WallInfo) {
     info.init(this.#group);
     scene.add(this.#group);
-    this.#canvas.width = 600;
-    this.#canvas.height = 600;
+    this.#canvas.width = Wall.canvasSize;
+    this.#canvas.height = Wall.canvasSize;
     this.makeWall();
     this.#group.add(this.#plane);
   }
 
-  highlightPoint(point : THREE.Vector3) {
+  /**
+   * 
+   * @param point A 3d point in the same coordinate system as the ball.
+   * @returns A 2d point in the canvas's coordinate system.
+   */
+  protected flatten(point : THREE.Vector3) {
     const { x, y } = this.info.flatten(point);
-    this.makeWall();
+    return new THREE.Vector2(Wall.xToCanvas(x), Wall.yToCanvas(y));
+  }
 
+  highlightPoint(point : THREE.Vector3) {
+    const { x, y } = this.flatten(point);
+    //this.makeWall();
+    /*
+    const context = this.#canvas.getContext("2d")!;
+    context.fillStyle = "#FF00FF";
+    context.fillRect(0, 0, canvasX, canvasY);
+    */
+    // TODO the circle is just a placeholder.
+    this.#roughCanvas.circle(x, y, Wall.canvasSize/5, {stroke: this.info.strokeColor, strokeWidth: 10, roughness: 3});
+    //console.log("%O %ccolor", { point : {...point}, x, y, canvasX, canvasY}, `color:${this.info.fillColor}; background:${this.info.strokeColor};`);
+    this.#texture.needsUpdate = true;
   }
 
   protected makeWall() {
@@ -397,7 +459,6 @@ class Wall {
     const margin = 30;
     const width = this.#canvas.width;
     const height = this.#canvas.height;
-    const roughCanvas = rough.canvas(this.#canvas);
     context.fillRect(0, 0, width, height);
 
     const options: Options = {
@@ -406,6 +467,9 @@ class Wall {
       roughness: 3,
       bowing: 3,
     };
+    const roughCanvas = this.#roughCanvas;
+    // TODO cache the Drawable result.
+    // By default, we want to redraw the line in exactly the same place each time.
     roughCanvas.line(margin, height / 3, width - margin, height / 3, options);
     roughCanvas.line(
       margin,
@@ -465,7 +529,7 @@ class Wall {
     fillColor: "#ffff00",
     strokeColor: "#ffffc0",
     flatten(input) {
-      return new THREE.Vector2(input.x, -input.z);
+      return new THREE.Vector2(input.x, input.z);
     },
     init(group) {
       group.position.y = boxMax;
@@ -477,7 +541,7 @@ class Wall {
     fillColor: "#00ffff",
     strokeColor: "#c0ffff",
     flatten(input) {
-      return new THREE.Vector2(input.x, input.z);
+      return new THREE.Vector2(input.x, -input.z);
     },
     init(group) {
       group.position.y = boxMin;
@@ -490,7 +554,7 @@ class Wall {
       if (dimension == "x") {
         return this.left;
       } else if (dimension == "y") {
-        return this.top;
+        return this.bottom;
       } else if (dimension == "z") {
         return this.rear;
       }
@@ -498,7 +562,7 @@ class Wall {
       if (dimension == "x") {
         return this.right;
       } else if (dimension == "y") {
-        return this.bottom;
+        return this.top;
       }
     }
     return;
@@ -521,6 +585,12 @@ const ballVelocity = {
   y: THREE.MathUtils.randFloatSpread(50),
   z: THREE.MathUtils.randFloatSpread(50),
 };
+
+/**
+ * The last time that we updated the ball's position.
+ * We know the velocity of the ball.
+ * We need to know how much time has passed since the last update, so we can use the velocity.
+ */
 let lastBallUpdate: number | undefined;
 
 // The _center_ of the ball can _not_ go all the way to the wall.
