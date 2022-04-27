@@ -32,11 +32,12 @@ For more info:  https://vitejs.dev/guide/#command-line-interface.
 
 ## Starting from Scratch
 I just switched to a new mac laptop.
-Here are some _quick_ notes on setting up a TypeScript / npm / git environmnet.
+Here are some _quick_ notes on setting up a TypeScript / npm / git / VS Code environment from scratch.
 
 * VS Code
   * I downloaded [VS Code](https://code.visualstudio.com/download) from their website.  I selected "Apple Silicon".
   * I installed the following extensions: [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), [JavaScript and TypeScript Nightly](https://marketplace.visualstudio.com/items?itemName=ms-vscode.vscode-typescript-next), [Vite](https://marketplace.visualstudio.com/items?itemName=antfu.vite) (The Anthony Fu version.)
+  * Main menu > Code > Preferences > Settings.  Search for `git autofetch` and set it to true.
 * `git`
   * I started from the terminal and typed `git`.  I clicked OK a few times and eventually an installer came up and did its job.
   * `git config --global user.name "John Doe"`. Add your own name and email.  These are recorded as part of every commit.
@@ -56,13 +57,14 @@ Here are some _quick_ notes on setting up a TypeScript / npm / git environmnet.
   * Not required to download this project.
   * But if you have a GitHub account and you are installing dev tools on a new computer you probably want to do this.
   * At the terminal:  `ssh-keygen` and take all the defaults.
-  * `cat https://github.com/settings/keys`
+  * `cat ~/.ssh/id_rsa.pub`
   * Go to https://github.com/settings/keys and add the new key.
 * This project (bounce-3d)
   * `cd ~/Documents`
   * `mkdir fun-git`
   * `cd fun-git`
   * `git clone https://github.com/TradeIdeasPhilip/bounce-3d`
+  * `cd bounce-3d`
   * `git submodule update --init --recursive` Some tools will automatically take care of the submodules when cloning a repository.  But this time I had to do it myself.
   * You should now be able to open the project directory in VS Code.
   * If everything worked you'll see the program running in an embedded browser in VS Code.
