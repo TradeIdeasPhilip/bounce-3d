@@ -18,10 +18,11 @@ import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?u
 import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
 import { getById } from "./lib/client-misc";
-import { FIGURE_SPACE, makeLinear, pick } from "./lib/misc";
+import { FIGURE_SPACE, makeLinear, pick, polarToRectangular } from "./lib/misc";
 
 // Source:  https://methodshop.com/batman-fight-words/
 import batmanFightWords from "./batman-fight-words.json";
+import { Point } from "roughjs/bin/geometry";
 
 // Coordinates in the 3d world:
 // x=0 is the center of the viewing area / box.
@@ -44,9 +45,9 @@ const canvas = getById("canvas", HTMLCanvasElement);
 
 /**
  * We put the canvas into a div to help with the layout magic.
- * Whenever the canvasHolder gets resized (e.g. you rotate your phone 90°) 
+ * Whenever the canvasHolder gets resized (e.g. you rotate your phone 90°)
  * we call code to resize the canvas **and** the renderer.
- * The canvas has has `position` set to `absolute` so its size 
+ * The canvas has has `position` set to `absolute` so its size
  * does not automatically change.
  * And when we manually change the canvas's size, that will not cause an other changes in the document.
  */
@@ -56,7 +57,7 @@ const scene = new THREE.Scene();
 
 /**
  * A standard camera.
- * 
+ *
  * Some of these values are just placeholders.
  * See setCameraPosition() for the actual values.
  */
@@ -97,7 +98,7 @@ const boxMax = 14;
  * The smallest position we care about in the 3d coordinates.
  * 0 is the center of the box.
  */
- const boxMin = -boxMax;
+const boxMin = -boxMax;
 
 /**
  * The size of the box where the ball is bouncing, in 3d coordinates.
@@ -108,7 +109,7 @@ const boxSize = boxMax - boxMin;
 
 /**
  * Draw the walls of the box using GridHelper.
- * 
+ *
  * This was the first way I drew the walls because I copied it from some sample code.
  * See the Wall class for the way we draw stuff now.
  */
@@ -142,7 +143,7 @@ const dimensions = ["x", "y", "z"] as const;
 
 /**
  * Use these to show when the ball hits a wall.
- * 
+ *
  * I started with GridHelper because it was easy.
  * This is slowly being replaced by the 3d words and other effects.
  */
@@ -172,7 +173,7 @@ dimensions.forEach((dimension) => {
 
 /**
  * Use this to draw the words on the side walls.
- * 
+ *
  * White on the front, black on the sides.
  * These words sit just outside the wall and should look black and white.
  */
@@ -183,7 +184,7 @@ const materials = [
 
 /**
  * Use this to draw the words on the rear wall.
- * 
+ *
  * White everywhere.
  * These words just barely poke out from behind the wall.
  * The extruded part is almost entirely behind the wall, so the color will be a combination of white and the color of the wall.
@@ -210,7 +211,7 @@ scene.add(pointLight1);
 
 /**
  * Use these when displaying 3d extruded text.
- * 
+ *
  * Note that these get loaded from the internet when the program starts.
  * So the list might be partially or completely empty, for a brief moment.
  */
@@ -235,16 +236,16 @@ const fonts: Font[] = [];
 
 /**
  * This is cleanup code for the 3d words.
- * 
+ *
  * When we go to add new words, the first thing we do is remove any previous words that were already written on that wall.
- * 
+ *
  * TODO move all of this to the Wall class.
  */
 const drawnOnWall = new Map<string, () => void>();
 
 /**
  * Call this when the ball hits a wall so we can update the GUI.
- * 
+ *
  * This is what draws the 3d Batman fight words.
  * @param bounceDimension Which wall
  * @param side Which wall
@@ -341,23 +342,23 @@ type WallInfo = {
   /**
    * The foreground color.  Any css color will do.
    */
-   readonly strokeColor: string;
-   /**
-    * Convert from the ball's coordinate system, to a coordinate system appropriate to the wall.
-    * Use this function to add 3d effects on a wall (like the batman words that use extruded text) without worrying about the fact that each wall faces a different direction.
-    * 
-    * Use Wall.flatten(), instead, if you want to draw on the canvas.
-    * WallInfo.flatten() is used to implement Wall.flatten().
-    * @param input A point in the ball's coordinates.
-    * @returns A point on the wall.
-    * There is no Z dimension because the wall is flat.
-    * If you set Z=0, this should match the 3d coordinates of the Wall.#group.
-    */
+  readonly strokeColor: string;
+  /**
+   * Convert from the ball's coordinate system, to a coordinate system appropriate to the wall.
+   * Use this function to add 3d effects on a wall (like the batman words that use extruded text) without worrying about the fact that each wall faces a different direction.
+   *
+   * Use Wall.flatten(), instead, if you want to draw on the canvas.
+   * WallInfo.flatten() is used to implement Wall.flatten().
+   * @param input A point in the ball's coordinates.
+   * @returns A point on the wall.
+   * There is no Z dimension because the wall is flat.
+   * If you set Z=0, this should match the 3d coordinates of the Wall.#group.
+   */
   flatten(input: THREE.Vector3): THREE.Vector2;
   /**
    * Move the group into the correct position.
    * The group holds the wall and whatever 3d objects are attached to the wall.
-   * 
+   *
    * flatten() and init() need to be consistent.
    * The both describe the position of the wall.
    */
@@ -377,18 +378,28 @@ class Wall {
    * @param x The x coordinate that comes from WallInfo.flatten().x
    * @returns The corresponding x coordinate on the canvas.
    */
-  protected static readonly xToCanvas = makeLinear(boxMin, 0, boxMax, this.canvasSize);
+  protected static readonly xToCanvas = makeLinear(
+    boxMin,
+    0,
+    boxMax,
+    this.canvasSize
+  );
 
   /**
    * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
    * @param y The y coordinate that comes from WallInfo.flatten().y
    * @returns The corresponding x coordinate on the canvas.
    */
-   protected static readonly yToCanvas = makeLinear(boxMin, this.canvasSize, boxMax, 0);
+  protected static readonly yToCanvas = makeLinear(
+    boxMin,
+    this.canvasSize,
+    boxMax,
+    0
+  );
 
   /**
    * This stores the position and rotation of the wall.
-   * 
+   *
    * Put 3d objects into here if you want them to be relative to a specific wall.
    * The x coordinate will always go from [wallMin, wallMax].
    * The y coordinate will always go from [wallMin, wallMax].
@@ -401,10 +412,10 @@ class Wall {
   /**
    * Draw on this at any time.
    * (Ideally but not necessarily in the animationFrame callback.)
-   * 
+   *
    * Set `this.#texture.needsUpdate = true;` at any time to copy from the canvas to the 3d object.
    * The copy will probably happen in the next animationFrame callback.
-   * 
+   *
    * Each wall gets its own canvas because the update isn't done immediately.
    * The canvas holds the image until the renderer is ready for it.
    */
@@ -430,16 +441,16 @@ class Wall {
   }
 
   /**
-   * 
+   *
    * @param point A 3d point in the same coordinate system as the ball.
    * @returns A 2d point in the canvas's coordinate system.
    */
-  protected flatten(point : THREE.Vector3) {
+  protected flatten(point: THREE.Vector3) {
     const { x, y } = this.info.flatten(point);
     return new THREE.Vector2(Wall.xToCanvas(x), Wall.yToCanvas(y));
   }
 
-  highlightPoint(point : THREE.Vector3) {
+  highlightPoint(point: THREE.Vector3) {
     const { x, y } = this.flatten(point);
     //this.makeWall();
     /*
@@ -447,8 +458,33 @@ class Wall {
     context.fillStyle = "#FF00FF";
     context.fillRect(0, 0, canvasX, canvasY);
     */
-    // TODO the circle is just a placeholder.
-    this.#roughCanvas.circle(x, y, Wall.canvasSize/5, {stroke: this.info.strokeColor, strokeWidth: 10, roughness: 3});
+
+    const drawCircle = () => {
+      this.#roughCanvas.circle(x, y, Wall.canvasSize / 5, {
+        stroke: this.info.strokeColor,
+        strokeWidth: 10,
+        roughness: 3,
+      });
+    };
+
+    const drawStar = () => {
+      const radius = (Wall.canvasSize / 14) * (Math.random() + 1);
+      const initialAngle = Math.random() * 2 * Math.PI;
+      const nextAngle = ((2 * Math.PI) / 5) * 2;
+      const points: Point[] = [];
+      for (let i = 0; i < 5; i++) {
+        const offset = polarToRectangular(radius, initialAngle + i * nextAngle);
+        points.push([x + offset.x, y + offset.y]);
+      }
+      this.#roughCanvas.polygon(points, {
+        stroke: this.info.strokeColor,
+        strokeWidth: 5 + Math.random() * 5,
+        roughness: 2 * Math.random() * 2,
+        disableMultiStroke: Math.random() > 0.5,
+      });
+    };
+    drawStar();
+
     //console.log("%O %ccolor", { point : {...point}, x, y, canvasX, canvasY}, `color:${this.info.fillColor}; background:${this.info.strokeColor};`);
     this.#texture.needsUpdate = true;
   }
@@ -549,7 +585,7 @@ class Wall {
     },
   });
 
-  static find(dimension : "x"|"y"|"z", position : number) : Wall | undefined {
+  static find(dimension: "x" | "y" | "z", position: number): Wall | undefined {
     if (position < 0) {
       if (dimension == "x") {
         return this.left;
