@@ -373,6 +373,8 @@ class Wall {
    */
   protected static readonly canvasSize = 600;
 
+  protected static readonly margin = this.canvasSize / 20;
+
   /**
    * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
    * @param x The x coordinate that comes from WallInfo.flatten().x
@@ -483,7 +485,52 @@ class Wall {
         disableMultiStroke: Math.random() > 0.5,
       });
     };
-    drawStar();
+
+    const canvasSize = Wall.canvasSize;
+
+    function findCellCenter() {
+      function findDimensionCenter(input : number) {
+        if (input < canvasSize/ 3) {
+          return canvasSize / 6;
+        } else if (input < canvasSize * (2 / 3)) {
+          return canvasSize / 2;
+        } else {
+          return canvasSize * (5 / 6);
+        }
+      }
+      return {x: findDimensionCenter(x), y: findDimensionCenter(y)};
+    }
+
+    const drawTicTacToeMove = () => {
+      // TODO only do this if the cell is free.  Otherwise choose a different type of drawing.
+      const margin = Wall.margin;
+      const radius = canvasSize / 6 - margin;
+      const center = findCellCenter();
+      if (Math.random() < 0.5) {
+        this.#roughCanvas.circle(center.x, center.y, radius*2, {
+          stroke: this.info.strokeColor,
+          strokeWidth: 7 + Math.random() * 2,
+          roughness: 3,
+          disableMultiStroke: true
+        });
+        //console.log("circle", {radius, margin, center});
+      } else {
+        const left = center.x - radius;
+        const right = center.x + radius;
+        const top = center.y - radius;
+        const bottom = center.y + radius;
+        const options : Options = {
+          stroke: this.info.strokeColor,
+          strokeWidth: 7 + Math.random() * 2,
+          roughness: 3,
+          disableMultiStroke: true
+        };
+        this.#roughCanvas.line(left, top, right, bottom, options);
+        this.#roughCanvas.line(left, bottom, right, top, options);
+        //console.log("square", {radius, margin, center, left, top, right, bottom});
+      }
+    }
+    drawTicTacToeMove();
 
     //console.log("%O %ccolor", { point : {...point}, x, y, canvasX, canvasY}, `color:${this.info.fillColor}; background:${this.info.strokeColor};`);
     this.#texture.needsUpdate = true;
@@ -492,7 +539,7 @@ class Wall {
   protected makeWall() {
     const context = this.#canvas.getContext("2d")!;
     context.fillStyle = this.info.fillColor;
-    const margin = 30;
+    const margin = Wall.margin;
     const width = this.#canvas.width;
     const height = this.#canvas.height;
     context.fillRect(0, 0, width, height);
