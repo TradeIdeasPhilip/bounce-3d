@@ -5,13 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.e3b9682b.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bounce 3D</title>
-    <script type="module" crossorigin src="./assets/index.b7dc8057.js"></script>
-    <link rel="stylesheet" href="./assets/index.7f96f2f3.css">
+    <script type="module" crossorigin src="./assets/index.0fecd6f9.js"></script>
+    <link rel="stylesheet" href="./assets/index.dde3139a.css">
   </head>
   <body>
-    <div id="help">
-      <a href="https://github.com/TradeIdeasPhilip/bounce-3d">?</a>
-    </div>
     <div id="canvasHolder">
       <div id="canvasCenterEr">
         <canvas id="canvas"></canvas>
@@ -19,17 +16,14 @@
     </div>
     <div id="bottom">
       <div id="controls">
-        <div id="nudgeControls" class="simpleBorder">
-          Nudge:
-          <button id="nudgeLeft">⯇<span class="optional"> Left</span></button>
-          <button id="nudgeRight">⯈<span class="optional"> Right</span></button>
-          <button id="nudgeUp">⯅<span class="optional"> Up</span></button>
-          <button id="nudgeDown">⯆<span class="optional"> Down</span></button>
-          <button id="nudgeAway">⨂<span class="optional"> Away</span></button>
-          <button id="nudgeToward">
-            ⦿<span class="optional"> Toward</span>
-          </button>
-        </div>
+        <div id="topControls" class="simpleBorder">
+          <div id="speedControls">
+            <span id="turtle">🐢</span><input type="range" id="speed" min="0" max="10" value="5"><span id="rabbit">🐰</span>            
+          </div>
+          <div id="help">
+            <a href="https://github.com/TradeIdeasPhilip/bounce-3d">❓</a>
+          </div>
+              </div>
         <div id="dollyZoomControls" class="simpleBorder">
           <span><span class="optional">Dolly </span>Zoom:</span>
           <input

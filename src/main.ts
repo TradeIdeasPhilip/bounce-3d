@@ -522,7 +522,8 @@ class Wall {
         const options : Options = {
           stroke: this.info.strokeColor,
           strokeWidth: 7 + Math.random() * 2,
-          roughness: 3,
+          roughness: 4,
+          bowing: 4,
           disableMultiStroke: true
         };
         this.#roughCanvas.line(left, top, right, bottom, options);
