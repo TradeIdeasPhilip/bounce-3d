@@ -39,12 +39,19 @@ body {
   right: 0;
 }
 
-#nudgeControls {
+#topControls {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  align-items: baseline;
-  gap: 0.25em 0.5em;
+}
+
+#speedControls {
+  display: flex;
+  flex: 1;
+}
+
+#speedControls input[type=range] {
+  flex: 1;
+  min-width: 2em;
 }
 
 #dollyZoomControls {
@@ -61,6 +68,7 @@ body {
 
 #controls {
   flex: 1;
+  user-select: none;
 }
 
 #fovDisplay {
@@ -90,25 +98,8 @@ body {
   border-radius: 0.5em;
 }
 
-@media (max-width: 20rem) {
-  .optional {
-    display: none;
-  }
-}
-
-#help {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 5;
-  font-size: 2rem;
-  background-color: rgba(64, 64, 64, 70%);
-  padding: 0.25rem 0.5rem;
-}
-
 #help a {
-  color: white;
-  font-weight: bold;
+  text-decoration: none;
 }
 
 #workingCanvasHolder {

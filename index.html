@@ -7,9 +7,6 @@
     <title>Bounce 3D</title>
   </head>
   <body>
-    <div id="help">
-      <a href="https://github.com/TradeIdeasPhilip/bounce-3d">?</a>
-    </div>
     <div id="canvasHolder">
       <div id="canvasCenterEr">
         <canvas id="canvas"></canvas>
@@ -17,17 +14,14 @@
     </div>
     <div id="bottom">
       <div id="controls">
-        <div id="nudgeControls" class="simpleBorder">
-          Nudge:
-          <button id="nudgeLeft">⯇<span class="optional"> Left</span></button>
-          <button id="nudgeRight">⯈<span class="optional"> Right</span></button>
-          <button id="nudgeUp">⯅<span class="optional"> Up</span></button>
-          <button id="nudgeDown">⯆<span class="optional"> Down</span></button>
-          <button id="nudgeAway">⨂<span class="optional"> Away</span></button>
-          <button id="nudgeToward">
-            ⦿<span class="optional"> Toward</span>
-          </button>
-        </div>
+        <div id="topControls" class="simpleBorder">
+          <div id="speedControls">
+            <span id="turtle">🐢</span><input type="range" id="speed" min="0" max="10" value="5"><span id="rabbit">🐰</span>            
+          </div>
+          <div id="help">
+            <a href="https://github.com/TradeIdeasPhilip/bounce-3d">❓</a>
+          </div>
+              </div>
         <div id="dollyZoomControls" class="simpleBorder">
           <span><span class="optional">Dolly </span>Zoom:</span>
           <input

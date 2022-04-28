@@ -663,10 +663,10 @@ function makeMarker(x = 0, y = 0, z = 0) {
 (window as any).makeMarker = makeMarker;
 
 const ball = makeMarker();
-const ballVelocity = {
-  x: THREE.MathUtils.randFloatSpread(50),
-  y: THREE.MathUtils.randFloatSpread(50),
-  z: THREE.MathUtils.randFloatSpread(50),
+let ballVelocity = {
+  y: 0,
+  x: 0,
+  z: 0,
 };
 
 /**
@@ -834,21 +834,6 @@ function animate(time: DOMHighResTimeStamp) {
 }
 requestAnimationFrame(animate);
 
-(
-  [
-    ["Left", "x", -1],
-    ["Right", "x", 1],
-    ["Down", "y", -1],
-    ["Up", "y", 1],
-    ["Away", "z", -1],
-    ["Toward", "z", 1],
-  ] as const
-).forEach(([name, dimension, delta]) => {
-  getById("nudge" + name, HTMLButtonElement).addEventListener("click", () => {
-    ballVelocity[dimension] += delta;
-  });
-});
-
 /**
  * This might update the screen after a resize.
  * This function includes a delay so multiple requests in a row can be consolidated.
@@ -887,3 +872,66 @@ const observer = new ResizeObserver((entries) => {
 // So some of the overhead will double because of this second listener, but the main part of the work will remain the same.
 observer.observe(canvasHolder, { box: "content-box" });
 observer.observe(canvasHolder, { box: "device-pixel-content-box" });
+
+{
+  const scaleSpeedFromGui = makeLinear(0, 0, 5, 21.7);
+
+  const speedInput = getById("speed", HTMLInputElement);
+  const turtleIcon = getById("turtle", HTMLSpanElement);
+  const rabbitIcon = getById("rabbit", HTMLSpanElement);
+
+  const min = parseInt(speedInput.min) ;
+  const max = parseInt(speedInput.max) ;
+
+  const speedControlUpdate = () => {
+    const inputSpeed = parseInt(speedInput.value);
+
+    turtleIcon.style.cursor = (inputSpeed > min)?"w-resize":"";
+    rabbitIcon.style.cursor = (inputSpeed < max)?"e-resize":"";
+
+    const speed = scaleSpeedFromGui(inputSpeed);
+    ballVelocity = randomDirection3(speed);
+    console.log({
+      inputSpeed,
+      speed,
+      ballVelocity,
+      resultingSpeed: Math.hypot(
+        ballVelocity.x,
+        ballVelocity.y,
+        ballVelocity.z
+      ),
+    });
+  };
+
+  speedControlUpdate();
+
+  speedInput.addEventListener("input", speedControlUpdate);
+  turtleIcon.addEventListener("click", () => {
+    const speed = parseInt(speedInput.value);
+    if (speed > min) {
+      speedInput.value = (speed - 1).toString();
+      speedControlUpdate();
+    }
+  });
+  rabbitIcon.addEventListener("click", () => {
+    const speed = parseInt(speedInput.value);
+    if (speed < max) {
+      speedInput.value = (speed + 1).toString();
+      speedControlUpdate();
+    }
+  });
+}
+
+function randomDirection3(desiredLength = 1) {
+  function normal() {
+    return Math.random() + Math.random() + Math.random() + Math.random() - 2;
+  }
+  const result = { x: normal(), y: normal(), z: normal() };
+  // TODO what about ÷0 ?
+  const initialLength = Math.hypot(result.x, result.y, result.z);
+  const factor = desiredLength / initialLength;
+  result.x *= factor;
+  result.y *= factor;
+  result.z *= factor;
+  return result;
+}
