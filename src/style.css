@@ -113,3 +113,9 @@ body {
 #workingCanvas {
   opacity: 50%;
 }
+
+#displacementMap {
+  position: absolute;
+  z-index: 3;
+  background-color: pink;
+}

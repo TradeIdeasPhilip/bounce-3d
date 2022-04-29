@@ -33,10 +33,34 @@ import { Point } from "roughjs/bin/geometry";
 // z=0 is the center of the viewing area / box.
 // Positive z moves toward the camera.  Negative z moves toward the horizon.
 
-// TODO TODO TODO
-// * Make arrows work on android.  SVG?
-//   http://thenewcode.com/1068/Making-Arrows-in-SVG
-//   https://www.svgviewer.dev/s/11868/arrow-right-1
+// TODO Each wall should have it's own canvas, so it can set the center of the special effect to the point where the ball
+// bounced off the all.
+// And don't display the canvas on the screen.
+const displacementMapCanvas = getById("displacementMap", HTMLCanvasElement);
+function addBump() {
+  const size = 300;
+  displacementMapCanvas.width = size;
+  displacementMapCanvas.height = size;
+  const context = displacementMapCanvas.getContext("2d")!;
+  //context.fillStyle = "black";
+  //context.fillRect(0, 0, size, size);
+  const gradient = context.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/3);
+  for (let i = 0; i < 16; i++) {
+    const color = "#" + i.toString(16).repeat(3);
+    const location = Math.acos(i/15) / Math.acos(0);
+    gradient.addColorStop(location, color);
+  }
+  //gradient.addColorStop(0, "#fff");
+  //gradient.addColorStop(2/3, "#808080"); 
+  //gradient.addColorStop(1, "#000");
+  context.fillStyle = gradient;
+  //context.ellipse(size / 2, size /2, size/ 3, size/3, 0, 0, 2 * Math.PI);
+  //context.fill();
+  context.fillRect(0, 0, size, size);
+
+}
+addBump();
+const displacementMapTexture = new THREE.CanvasTexture(displacementMapCanvas);
 
 /**
  * The main canvas where we display the 3d scene.
@@ -71,6 +95,9 @@ const camera = new THREE.PerspectiveCamera(
 const renderer = new THREE.WebGLRenderer({
   canvas,
 });
+// I have yet to see a single shadow.
+// TODO find and fix the problem.
+renderer.shadowMap.enabled = true;
 
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
@@ -426,11 +453,13 @@ class Wall {
   #roughCanvas = rough.canvas(this.#canvas);
   #texture = new THREE.CanvasTexture(this.#canvas);
   #plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(boxSize, boxSize),
-    new THREE.MeshBasicMaterial({
+    new THREE.PlaneGeometry(boxSize, boxSize, 50, 50),
+    new THREE.MeshStandardMaterial({
       map: this.#texture,
-      opacity: 0.5,
-      transparent: true,
+      displacementMap: displacementMapTexture,
+      displacementScale: -1,
+      //opacity: 0.5,
+      //transparent: true,
     })
   );
   private constructor(private readonly info: WallInfo) {
@@ -440,6 +469,8 @@ class Wall {
     this.#canvas.height = Wall.canvasSize;
     this.makeWall();
     this.#group.add(this.#plane);
+    this.#plane.castShadow = true;
+    this.#plane.receiveShadow = true;
   }
 
   /**
@@ -633,6 +664,8 @@ class Wall {
     },
   });
 
+  static readonly all : readonly Wall[] = [this.top, this.bottom, this.left, this.right, this.rear];
+
   static find(dimension: "x" | "y" | "z", position: number): Wall | undefined {
     if (position < 0) {
       if (dimension == "x") {
@@ -651,6 +684,17 @@ class Wall {
     }
     return;
   }
+
+  // Just showing off the effect.  It looks great!
+  #animationPhaseOffset = 2 * Math.PI * Math.random();
+  #animationMaxOffset = 2 + Math.random() * 3;
+  #animationPace = 1 + Math.random() * 3;
+
+  doAnimationFrame(time : DOMHighResTimeStamp) {
+    const newScale = Math.sin(time/500*this.#animationPace - this.#animationPhaseOffset)*this.#animationMaxOffset;
+    this.#plane.material.displacementScale = newScale;
+    this.#plane.material.needsUpdate = true;
+  }
 }
 
 function makeMarker(x = 0, y = 0, z = 0) {
@@ -658,6 +702,7 @@ function makeMarker(x = 0, y = 0, z = 0) {
   const material = new THREE.MeshStandardMaterial({ color: 0xff2020 });
   const marker = new THREE.Mesh(geometry, material);
   marker.position.set(x, y, z);
+  marker.castShadow = true;
   scene.add(marker);
   return marker;
 }
@@ -830,6 +875,8 @@ function animate(time: DOMHighResTimeStamp) {
   //for (const toUpdate of wantsAnimationUpdate) {
   //  toUpdate.update(time);
   //}
+
+  Wall.all.forEach(wall => wall.doAnimationFrame(time));
 
   renderer.render(scene, camera);
 }

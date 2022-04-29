@@ -8,13 +8,17 @@ This project uses three.js.
 I.e. WebGL and GPUs.
 
 ## Current Status
-The program does most of what I want.
+I'm testing a lot of ideas at once.
+Currently you see several different things that don't make sense together.
+And other items are temporarily commented out.
 
 I'd like to play with the lights and shadows and reflections more.
 
+I want to make the shadows work!
+
 ## See it Running
 * [Run it yourself](https://tradeideasphilip.github.io/bounce-3d/)
-* [Watch on YouTube](https://youtu.be/OEnWbJ4_FKY) (old)
+* [Watch on YouTube](https://youtu.be/OEnWbJ4_FKY) (_very_ old)
 
 ## How to Run Locally
 * Clone this project with git.
