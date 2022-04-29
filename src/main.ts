@@ -45,9 +45,36 @@ function addBump() {
   //context.fillStyle = "black";
   //context.fillRect(0, 0, size, size);
   const gradient = context.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/3);
+  // The radial gradient will reflect the part that we're iterating over.
+  // So we get one complete period of a cosine.  At the edge the value is the lowest.
+  // And the derivative is 0, to match the part of the plane that doesn't get distorted.
+  // At the center the value is at its highest.  And the derivative is 0, to match the
+  // mirror image.  The derivate is highest half way between the center and the outer edge.
+  //
+  // The color stops are laid out like the contour lines on a map.  The stops and the lines
+  // are close to each other where the altitude changes quickly.  They spread out more as
+  // the altitude changes less quickly.
   for (let i = 0; i < 16; i++) {
     const color = "#" + i.toString(16).repeat(3);
-    const location = Math.acos(i/15) / Math.acos(0);
+    const location = Math.acos((i / 15) * 2 - 1) / Math.PI;
+    //console.log({ location, color });
+    /* {location: 1, color: '#000'}
+     * {location: 0.8337420285188097, color: '#111'}
+     * {location: 0.7620365107440709, color: '#222'}
+     * {location: 0.7048327646991335, color: '#333'}
+     * {location: 0.6545452182480774, color: '#444'}
+     * {location: 0.6081734479693928, color: '#555'}
+     * {location: 0.564094216848975, color: '#666'}
+     * {location: 0.5212364096070797, color: '#777'}
+     * {location: 0.4787635903929203, color: '#888'}
+     * {location: 0.43590578315102513, color: '#999'}
+     * {location: 0.3918265520306073, color: '#aaa'}
+     * {location: 0.3454547817519227, color: '#bbb'}
+     * {location: 0.2951672353008665, color: '#ccc'}
+     * {location: 0.23796348925592917, color: '#ddd'}
+     * {location: 0.16625797148119023, color: '#eee'}
+     * {location: 0, color: '#fff'}
+     */
     gradient.addColorStop(location, color);
   }
   //gradient.addColorStop(0, "#fff");
@@ -970,7 +997,14 @@ observer.observe(canvasHolder, { box: "device-pixel-content-box" });
   });
 }
 
+// I copied this (with a tiny modification) from my roughjs-with-vite project.
+// TODO move this to a shared library.
 function randomDirection3(desiredLength = 1) {
+  // TODO there is a better way to do this.  You can get the two angles
+  // with two random numbers and an arcsine.  Details available on google.
+  // There was no cut-and-paste ready solution, that's why I settled for
+  // this version.  It's a good approximation, but it seems like more 
+  // runtime CPU than the perfect result.
   function normal() {
     return Math.random() + Math.random() + Math.random() + Math.random() - 2;
   }
