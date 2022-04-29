@@ -1,7 +1,7 @@
 import "./style.css";
 import * as THREE from "three";
 import { Font, FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
-import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js"
 import rough from "roughjs";
 import { Options } from "roughjs/bin/core";
 
@@ -44,7 +44,7 @@ function addBump() {
   const context = displacementMapCanvas.getContext("2d")!;
   //context.fillStyle = "black";
   //context.fillRect(0, 0, size, size);
-  const gradient = context.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/3);
+  const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 3);
   // The radial gradient will reflect the part that we're iterating over.
   // So we get one complete period of a cosine.  At the edge the value is the lowest.
   // And the derivative is 0, to match the part of the plane that doesn't get distorted.
@@ -139,8 +139,8 @@ renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
 const pointLight = new THREE.PointLight(0xffffff);
 pointLight.position.set(5, 5, 5);
 
-const ambientLight = new THREE.AmbientLight(0xffffff);
-scene.add(pointLight, ambientLight);
+//const ambientLight = new THREE.AmbientLight(0xffffff);
+//scene.add(pointLight, ambientLight);
 
 /**
  * The largest position we care about in the 3d coordinates.
@@ -256,6 +256,7 @@ scene.fog = new THREE.Fog(0x000000, 250, 1400);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
 dirLight.position.set(0, 0, 1).normalize();
+dirLight.castShadow = true;
 scene.add(dirLight);
 
 // Of all the lights, this one seems to help the most!  :)
@@ -339,6 +340,10 @@ function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
   const text =
     pick(batmanFightWords) + "!".repeat(Math.floor(Math.random() * 3) + 1);
 
+  // I tried using TextBufferGeometry.
+  // I ran into a bug:  https://github.com/vitejs/vite/issues/7964
+  // The documentation says that the "Buffer" versions are more efficient.
+  // While investigating this bug I found that TextBufferGeometry is just an alias for TextGeometry, so it's not a big deal.  
   const textGeo = new TextGeometry(text, {
     font: pick(fonts),
     size: 3,
@@ -480,8 +485,8 @@ class Wall {
   #roughCanvas = rough.canvas(this.#canvas);
   #texture = new THREE.CanvasTexture(this.#canvas);
   #plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(boxSize, boxSize, 50, 50),
-    new THREE.MeshStandardMaterial({
+    new THREE.PlaneBufferGeometry(boxSize, boxSize, 50, 50),
+    new THREE.MeshPhongMaterial({
       map: this.#texture,
       displacementMap: displacementMapTexture,
       displacementScale: -1,
@@ -547,8 +552,8 @@ class Wall {
     const canvasSize = Wall.canvasSize;
 
     function findCellCenter() {
-      function findDimensionCenter(input : number) {
-        if (input < canvasSize/ 3) {
+      function findDimensionCenter(input: number) {
+        if (input < canvasSize / 3) {
           return canvasSize / 6;
         } else if (input < canvasSize * (2 / 3)) {
           return canvasSize / 2;
@@ -556,7 +561,7 @@ class Wall {
           return canvasSize * (5 / 6);
         }
       }
-      return {x: findDimensionCenter(x), y: findDimensionCenter(y)};
+      return { x: findDimensionCenter(x), y: findDimensionCenter(y) };
     }
 
     const drawTicTacToeMove = () => {
@@ -565,7 +570,7 @@ class Wall {
       const radius = canvasSize / 6 - margin;
       const center = findCellCenter();
       if (Math.random() < 0.5) {
-        this.#roughCanvas.circle(center.x, center.y, radius*2, {
+        this.#roughCanvas.circle(center.x, center.y, radius * 2, {
           stroke: this.info.strokeColor,
           strokeWidth: 7 + Math.random() * 2,
           roughness: 3,
@@ -577,7 +582,7 @@ class Wall {
         const right = center.x + radius;
         const top = center.y - radius;
         const bottom = center.y + radius;
-        const options : Options = {
+        const options: Options = {
           stroke: this.info.strokeColor,
           strokeWidth: 7 + Math.random() * 2,
           roughness: 4,
@@ -691,7 +696,7 @@ class Wall {
     },
   });
 
-  static readonly all : readonly Wall[] = [this.top, this.bottom, this.left, this.right, this.rear];
+  static readonly all: readonly Wall[] = [this.top, this.bottom, this.left, this.right, this.rear];
 
   static find(dimension: "x" | "y" | "z", position: number): Wall | undefined {
     if (position < 0) {
@@ -717,16 +722,16 @@ class Wall {
   #animationMaxOffset = 2 + Math.random() * 3;
   #animationPace = 1 + Math.random() * 3;
 
-  doAnimationFrame(time : DOMHighResTimeStamp) {
-    const newScale = Math.sin(time/500*this.#animationPace - this.#animationPhaseOffset)*this.#animationMaxOffset;
+  doAnimationFrame(time: DOMHighResTimeStamp) {
+    const newScale = Math.sin(time / 500 * this.#animationPace - this.#animationPhaseOffset) * this.#animationMaxOffset;
     this.#plane.material.displacementScale = newScale;
     this.#plane.material.needsUpdate = true;
   }
 }
 
 function makeMarker(x = 0, y = 0, z = 0) {
-  const geometry = new THREE.SphereGeometry(1, 24, 24);
-  const material = new THREE.MeshStandardMaterial({ color: 0xff2020 });
+  const geometry = new THREE.SphereBufferGeometry(1, 24, 24);
+  const material = new THREE.MeshPhongMaterial({ color: 0xff2020 });
   const marker = new THREE.Mesh(geometry, material);
   marker.position.set(x, y, z);
   marker.castShadow = true;
@@ -871,8 +876,7 @@ function showFovInSvg(fov: number) {
 
   miniBall.setAttribute(
     "transform",
-    `translate(${cubeX}, ${cubeY}) scale(${
-      cubeSize / (boxMax - boxMin)
+    `translate(${cubeX}, ${cubeY}) scale(${cubeSize / (boxMax - boxMin)
     }) translate(${-boxMin}, ${-boxMin})`
   );
 }
@@ -955,14 +959,14 @@ observer.observe(canvasHolder, { box: "device-pixel-content-box" });
   const turtleIcon = getById("turtle", HTMLSpanElement);
   const rabbitIcon = getById("rabbit", HTMLSpanElement);
 
-  const min = parseInt(speedInput.min) ;
-  const max = parseInt(speedInput.max) ;
+  const min = parseInt(speedInput.min);
+  const max = parseInt(speedInput.max);
 
   const speedControlUpdate = () => {
     const inputSpeed = parseInt(speedInput.value);
 
-    turtleIcon.style.cursor = (inputSpeed > min)?"w-resize":"";
-    rabbitIcon.style.cursor = (inputSpeed < max)?"e-resize":"";
+    turtleIcon.style.cursor = (inputSpeed > min) ? "w-resize" : "";
+    rabbitIcon.style.cursor = (inputSpeed < max) ? "e-resize" : "";
 
     const speed = scaleSpeedFromGui(inputSpeed);
     ballVelocity = randomDirection3(speed);
