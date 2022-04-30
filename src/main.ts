@@ -843,8 +843,6 @@ function animate(time: DOMHighResTimeStamp) {
 
   updateBall(time);
 
-  //controls.update();
-
   //for (const toUpdate of wantsAnimationUpdate) {
   //  toUpdate.update(time);
   //}

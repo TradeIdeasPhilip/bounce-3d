@@ -39,14 +39,9 @@ body {
   right: 0;
 }
 
-#topControls {
-  display: flex;
-  flex-wrap: wrap;
-}
-
 #speedControls {
   display: flex;
-  flex: 1;
+  grid-area: speed;
 }
 
 #speedControls input[type=range] {
@@ -59,6 +54,8 @@ body {
   flex-wrap: wrap;
   align-items: flex-end;
   column-gap: 0.5em;
+  grid-area: zoom;
+
 }
 
 #dollyZoomInput {
@@ -66,16 +63,12 @@ body {
   min-width: 2em;
 }
 
-#controls {
-  flex: 1;
-  user-select: none;
-}
-
 #fovDisplay {
   display: flex;
-  align-items: flex-end;
-  justify-items: center;
+  align-items: baseline;
+  justify-content: space-around;
   overflow: hidden;
+  grid-area: minimap;
 }
 
 #fovSvg {
@@ -85,31 +78,29 @@ body {
 }
 
 #bottom {
+  display: grid;
+  grid-template-areas: "speed help minimap" "zoom zoom minimap";
+  grid-template-columns: 1fr auto auto;
+  user-select: none;
+  margin: 0.25em;
+  gap: 0.25em;
+}
+
+#help {
+  grid-area: help;
   display: flex;
-  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-around;
 }
 
 .simpleBorder {
   border-style: solid;
   border-color: #ccc;
   border-width: 0.25em;
-  margin: 0.25em;
   padding: 0.25em;
   border-radius: 0.5em;
 }
 
 #help a {
   text-decoration: none;
-}
-
-#workingCanvasHolder {
-  background-color: black;
-  position: absolute;
-  z-index: 4;
-  top: 1em;
-  right: 1em;
-  display: none;
-}
-#workingCanvas {
-  opacity: 50%;
 }
