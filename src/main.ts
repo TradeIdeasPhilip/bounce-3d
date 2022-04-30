@@ -161,69 +161,7 @@ const boxSize = boxMax - boxMin;
 
 //const lightHelper = new THREE.PointLightHelper(pointLight);
 
-/**
- * Draw the walls of the box using GridHelper.
- *
- * This was the first way I drew the walls because I copied it from some sample code.
- * See the Wall class for the way we draw stuff now.
- */
-function addGrids() {
-  const gridHelperBottom = new THREE.GridHelper(boxSize, 3);
-  gridHelperBottom.position.y = boxMin;
-  scene.add(gridHelperBottom);
-
-  const gridHelperTop = new THREE.GridHelper(boxSize, 3);
-  gridHelperTop.position.y = boxMax;
-  scene.add(gridHelperTop);
-
-  const gridHelperLeft = new THREE.GridHelper(boxSize, 3);
-  gridHelperLeft.rotation.z = Math.PI / 2;
-  gridHelperLeft.position.x = boxMin;
-  scene.add(gridHelperLeft);
-
-  const gridHelperRight = new THREE.GridHelper(boxSize, 3);
-  gridHelperRight.rotation.z = Math.PI / 2;
-  gridHelperRight.position.x = boxMax;
-  scene.add(gridHelperRight);
-
-  const gridHelperBack = new THREE.GridHelper(boxSize, 3);
-  gridHelperBack.rotation.x = Math.PI / 2;
-  gridHelperBack.position.z = boxMin;
-  //scene.add(gridHelperBack);
-}
-//addGrids();
-
 const dimensions = ["x", "y", "z"] as const;
-
-/**
- * Use these to show when the ball hits a wall.
- *
- * I started with GridHelper because it was easy.
- * This is slowly being replaced by the 3d words and other effects.
- */
-const flashyWalls = {
-  x: {
-    min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-  },
-  y: {
-    min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-  },
-  z: {
-    min: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-    max: new THREE.GridHelper(boxSize, 19, 0xff88cc, 0xff88cc),
-  },
-};
-// Don't copy this logic!  Use Wall.#group for new code.
-flashyWalls.x.min.rotation.z = Math.PI / 2;
-flashyWalls.x.max.rotation.z = Math.PI / 2;
-flashyWalls.z.min.rotation.x = Math.PI / 2;
-flashyWalls.z.max.rotation.x = Math.PI / 2;
-dimensions.forEach((dimension) => {
-  flashyWalls[dimension].min.position[dimension] = boxMin;
-  flashyWalls[dimension].max.position[dimension] = boxMax;
-});
 
 /**
  * Use this to draw the words on the side walls.
@@ -548,6 +486,7 @@ class Wall {
         disableMultiStroke: Math.random() > 0.5,
       });
     };
+    //drawStar();
 
     const canvasSize = Wall.canvasSize;
 
@@ -759,19 +698,7 @@ let lastBallUpdate: number | undefined;
 const ballMin = boxMin + 0.5;
 const ballMax = boxMax - 0.5;
 
-const wallTimeout = new Map<THREE.GridHelper, number>();
-
 function updateBall(time: DOMHighResTimeStamp) {
-  // TODO would be a good pace to add a light.  It would be temporary.  it would be exactly where the ball hit the well
-  // it would last as long as the highlight on the wall.  (Maybe show the highlights on the mini-map at the same time TODO)
-
-  wallTimeout.forEach((timeout, wall) => {
-    if (time > timeout) {
-      scene.remove(wall);
-      wallTimeout.delete(wall);
-    }
-  });
-  //allFlashyWalls.forEach(wall => scene.remove(wall));
   if (lastBallUpdate !== undefined) {
     const secondsPassed = (time - lastBallUpdate) / 1000;
     if (secondsPassed <= 0) {
@@ -786,17 +713,11 @@ function updateBall(time: DOMHighResTimeStamp) {
       if (newValue < ballMin) {
         newValue = ballMin;
         ballVelocity[dimension] = Math.abs(ballVelocity[dimension]);
-        const wall = flashyWalls[dimension].min;
-        scene.add(wall);
-        wallTimeout.set(wall, time + 100);
         drawOnWall(dimension, "min");
         Wall.find(dimension, ballMin)?.highlightPoint(ball.position);
       } else if (newValue > ballMax) {
         newValue = ballMax;
         ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
-        const wall = flashyWalls[dimension].max;
-        scene.add(wall);
-        wallTimeout.set(wall, time + 100);
         drawOnWall(dimension, "max");
         Wall.find(dimension, ballMax)?.highlightPoint(ball.position);
       }
