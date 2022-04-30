@@ -33,61 +33,83 @@ import { Point } from "roughjs/bin/geometry";
 // z=0 is the center of the viewing area / box.
 // Positive z moves toward the camera.  Negative z moves toward the horizon.
 
-// TODO Each wall should have it's own canvas, so it can set the center of the special effect to the point where the ball
-// bounced off the all.
-// And don't display the canvas on the screen.
-const displacementMapCanvas = getById("displacementMap", HTMLCanvasElement);
-function addBump() {
-  const size = 300;
-  displacementMapCanvas.width = size;
-  displacementMapCanvas.height = size;
-  const context = displacementMapCanvas.getContext("2d")!;
-  //context.fillStyle = "black";
-  //context.fillRect(0, 0, size, size);
-  const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 3);
-  // The radial gradient will reflect the part that we're iterating over.
-  // So we get one complete period of a cosine.  At the edge the value is the lowest.
-  // And the derivative is 0, to match the part of the plane that doesn't get distorted.
-  // At the center the value is at its highest.  And the derivative is 0, to match the
-  // mirror image.  The derivate is highest half way between the center and the outer edge.
-  //
-  // The color stops are laid out like the contour lines on a map.  The stops and the lines
-  // are close to each other where the altitude changes quickly.  They spread out more as
-  // the altitude changes less quickly.
-  for (let i = 0; i < 16; i++) {
-    const color = "#" + i.toString(16).repeat(3);
-    const location = Math.acos((i / 15) * 2 - 1) / Math.PI;
-    //console.log({ location, color });
-    /* {location: 1, color: '#000'}
-     * {location: 0.8337420285188097, color: '#111'}
-     * {location: 0.7620365107440709, color: '#222'}
-     * {location: 0.7048327646991335, color: '#333'}
-     * {location: 0.6545452182480774, color: '#444'}
-     * {location: 0.6081734479693928, color: '#555'}
-     * {location: 0.564094216848975, color: '#666'}
-     * {location: 0.5212364096070797, color: '#777'}
-     * {location: 0.4787635903929203, color: '#888'}
-     * {location: 0.43590578315102513, color: '#999'}
-     * {location: 0.3918265520306073, color: '#aaa'}
-     * {location: 0.3454547817519227, color: '#bbb'}
-     * {location: 0.2951672353008665, color: '#ccc'}
-     * {location: 0.23796348925592917, color: '#ddd'}
-     * {location: 0.16625797148119023, color: '#eee'}
-     * {location: 0, color: '#fff'}
-     */
-    gradient.addColorStop(location, color);
+class BumpEffect {
+  static readonly #size = 300;
+  #canvas = document.createElement("canvas");
+  #context = this.#canvas.getContext("2d")!
+  #texture = new THREE.CanvasTexture(this.#canvas);
+  constructor(private readonly material : THREE.MeshPhongMaterial | THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial) {
+    if (!this.#context) {
+      throw new Error("wtf");
+    }
+    this.#canvas.height = BumpEffect.#size;
+    this.#canvas.width = BumpEffect.#size;
   }
-  //gradient.addColorStop(0, "#fff");
-  //gradient.addColorStop(2/3, "#808080"); 
-  //gradient.addColorStop(1, "#000");
-  context.fillStyle = gradient;
-  //context.ellipse(size / 2, size /2, size/ 3, size/3, 0, 0, 2 * Math.PI);
-  //context.fill();
-  context.fillRect(0, 0, size, size);
-
+  private fillCanvas(x : number, y : number, radius : number) {
+    const context = this.#context;
+    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+    // The radial gradient will reflect the part that we're iterating over.
+    // So we get one complete period of a cosine.  At the edge the value is the lowest.
+    // And the derivative is 0, to match the part of the plane that doesn't get distorted.
+    // At the center the value is at its highest.  And the derivative is 0, to match the
+    // mirror image.  The derivate is highest half way between the center and the outer edge.
+    //
+    // The color stops are laid out like the contour lines on a map.  The stops and the lines
+    // are close to each other where the altitude changes quickly.  They spread out more as
+    // the altitude changes less quickly.
+    for (let i = 0; i < 16; i++) {
+      // Should I cache these values?
+      const color = "#" + i.toString(16).repeat(3);
+      const location = Math.acos((i / 15) * 2 - 1) / Math.PI;
+      gradient.addColorStop(location, color);
+    }
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, BumpEffect.#size, BumpEffect.#size);
+    this.#texture.needsUpdate = true;
+  }
+  #program : { doAnimationFrame : (time : DOMHighResTimeStamp) => void , end : () => void} |undefined;
+  isActive() {
+    return this.#program != undefined;
+  }
+  doAnimationFrame(time : DOMHighResTimeStamp) {
+    this.#program?.doAnimationFrame(time);
+  }
+  end() {
+    this.#program?.end();
+    this.#program = undefined;
+  }
+  start(startTime : DOMHighResTimeStamp, x : number, y : number, ballVelocity : number) {
+    x *= BumpEffect.#size / Wall.canvasSize;
+    y *= BumpEffect.#size / Wall.canvasSize;
+    //console.log({start: this, startTime, x, y, ballVelocity});
+    this.end();
+    const endTime = startTime + 1500;
+    const maxDisplacement = 3;
+    const getAmplitude = makeLinear(startTime, 3, endTime, 0);
+    const getPhase = makeLinear(startTime, 0, endTime, - Math.PI*3);
+    // TODO we probably want to limit the radius so the bump doesn't go off the edge.
+    // In any case, this radius was just a guess.  Need to try it.
+    this.fillCanvas(x, y, BumpEffect.#size / 10);
+    this.material.displacementMap = this.#texture;
+    this.material.displacementScale = 0;
+    this.#program = {
+        doAnimationFrame : (time) => {
+          const amplitude = getAmplitude(time);
+          if (amplitude <= 0) {
+            this.end();
+          } else {
+            this.material.displacementScale = amplitude * Math.sin(getPhase(time));
+            this.material.needsUpdate = true;
+          }
+       },
+       end: () => {
+         this.material.displacementMap = null;
+         this.material.needsUpdate = true;
+        },
+    };
+  }
 }
-addBump();
-const displacementMapTexture = new THREE.CanvasTexture(displacementMapCanvas);
+
 
 /**
  * The main canvas where we display the 3d scene.
@@ -368,7 +390,7 @@ class Wall {
    * The number is arbitrary, but a higher number will have more precision and a higher cost.
    * The canvas will be projected onto a surface that is not a square, so I don't know that there is any ideal value here.
    */
-  protected static readonly canvasSize = 600;
+  static readonly canvasSize = 600;
 
   protected static readonly margin = this.canvasSize / 20;
 
@@ -426,12 +448,9 @@ class Wall {
     new THREE.PlaneBufferGeometry(boxSize, boxSize, 50, 50),
     new THREE.MeshPhongMaterial({
       map: this.#texture,
-      displacementMap: displacementMapTexture,
-      displacementScale: -1,
-      //opacity: 0.5,
-      //transparent: true,
     })
   );
+  #bumpEffect = new BumpEffect(this.#plane.material);
   private constructor(private readonly info: WallInfo) {
     info.init(this.#group);
     scene.add(this.#group);
@@ -453,8 +472,12 @@ class Wall {
     return new THREE.Vector2(Wall.xToCanvas(x), Wall.yToCanvas(y));
   }
 
-  highlightPoint(point: THREE.Vector3) {
+  highlightPoint(point: THREE.Vector3, time : DOMHighResTimeStamp) {
     const { x, y } = this.flatten(point);
+
+    const ballVelocity = 5;  // TODO.
+
+
     //this.makeWall();
     /*
     const context = this.#canvas.getContext("2d")!;
@@ -534,6 +557,10 @@ class Wall {
       }
     }
     drawTicTacToeMove();
+
+    if (!this.#bumpEffect.isActive()) {
+      this.#bumpEffect.start(time, x, y, ballVelocity);
+    }
 
     //console.log("%O %ccolor", { point : {...point}, x, y, canvasX, canvasY}, `color:${this.info.fillColor}; background:${this.info.strokeColor};`);
     this.#texture.needsUpdate = true;
@@ -656,15 +683,8 @@ class Wall {
     return;
   }
 
-  // Just showing off the effect.  It looks great!
-  #animationPhaseOffset = 2 * Math.PI * Math.random();
-  #animationMaxOffset = 2 + Math.random() * 3;
-  #animationPace = 1 + Math.random() * 3;
-
   doAnimationFrame(time: DOMHighResTimeStamp) {
-    const newScale = Math.sin(time / 500 * this.#animationPace - this.#animationPhaseOffset) * this.#animationMaxOffset;
-    this.#plane.material.displacementScale = newScale;
-    this.#plane.material.needsUpdate = true;
+    this.#bumpEffect.doAnimationFrame(time);
   }
 }
 
@@ -713,13 +733,14 @@ function updateBall(time: DOMHighResTimeStamp) {
       if (newValue < ballMin) {
         newValue = ballMin;
         ballVelocity[dimension] = Math.abs(ballVelocity[dimension]);
-        drawOnWall(dimension, "min");
-        Wall.find(dimension, ballMin)?.highlightPoint(ball.position);
+        //drawOnWall(dimension, "min");  TODO move this into the Wall class.
+        // Let Wall pick which special effects to use and when.
+        Wall.find(dimension, ballMin)?.highlightPoint(ball.position, time);
       } else if (newValue > ballMax) {
         newValue = ballMax;
         ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
-        drawOnWall(dimension, "max");
-        Wall.find(dimension, ballMax)?.highlightPoint(ball.position);
+        //drawOnWall(dimension, "max");
+        Wall.find(dimension, ballMax)?.highlightPoint(ball.position, time);
       }
       ball.position[dimension] = newValue;
     }
