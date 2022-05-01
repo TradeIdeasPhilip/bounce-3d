@@ -800,10 +800,7 @@ function updateBall(time: DOMHighResTimeStamp) {
  * @param fov Field of view.
  */
 function setCameraPosition(fov = 50) {
-  camera.fov = fov;
-  camera.updateProjectionMatrix();
-  //
-  // For now we just rely on the aspect ration being 1.  Set by the outside.
+  // For now we just rely on the aspect ratio being 1.  Set by the outside.
   // I found some good info on FOV vs aspect ratio!
   // https://stackoverflow.com/questions/17837652/calculating-frame-and-aspect-ratio-guides-to-match-cameras/17840405#17840405
   // According to this, PerspectiveCamera.fov refers to the FOV in the vertical direction.
@@ -812,6 +809,11 @@ function setCameraPosition(fov = 50) {
   const angleToEdge = fovInRadians / 2;
   const cameraToNearFace = boxMax / Math.tan(angleToEdge);
   camera.position.set(0, 0, boxMax + cameraToNearFace);
+
+  camera.fov = fov;
+  camera.near = cameraToNearFace / 2;
+  camera.far = cameraToNearFace + boxSize * 1.1;
+  camera.updateProjectionMatrix();
 }
 setCameraPosition();
 camera.lookAt(0, 0, 0);
