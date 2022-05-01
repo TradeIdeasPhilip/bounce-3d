@@ -192,6 +192,7 @@ renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
  */
 const pointLight = new THREE.PointLight(0xffffff);
 pointLight.position.set(5, 5, 5);
+pointLight.castShadow = true;
 
 //const ambientLight = new THREE.AmbientLight(0xffffff);
 //scene.add(pointLight, ambientLight);
@@ -253,7 +254,8 @@ scene.add(dirLight);
 
 // Of all the lights, this one seems to help the most!  :)
 const pointLight1 = new THREE.PointLight(0xffffff, 1.5);
-pointLight.position.set(0, 100, 90);
+pointLight.position.set(0, 100, 90);  // TODO why is this setting the position fo the first point light, not the one we just created?
+pointLight1.castShadow = true;
 scene.add(pointLight1);
 
 /**
