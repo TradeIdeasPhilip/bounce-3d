@@ -110,6 +110,17 @@ class BumpEffect {
   }
 }
 
+type RowAndColumn = { row : number, column : number };
+
+class TicTacToe {
+  #nextMove = true;
+  //canAddMore() { return this.#canAddMore; }
+  //disable() { this.#canAddMore = false; }
+  private static toIndex(rowAndColumn : RowAndColumn) {
+    return rowAndColumn.row * 3 + rowAndColumn.column;
+  }
+  #squares : (undefined | "X" | "O")[] = new Array(9);
+}
 
 /**
  * The main canvas where we display the 3d scene.
@@ -448,6 +459,7 @@ class Wall {
     new THREE.PlaneBufferGeometry(boxSize, boxSize, 50, 50),
     new THREE.MeshPhongMaterial({
       map: this.#texture,
+      //flatShading: true
     })
   );
   #bumpEffect = new BumpEffect(this.#plane.material);
@@ -604,8 +616,8 @@ class Wall {
   }
 
   static readonly rear = new Wall({
-    fillColor: "#ff0000",
-    strokeColor: "#ff8080",
+    fillColor: "hsl(0, 100%, 45%)",//"#ff0000",
+    strokeColor: "hsl(0, 100%, 83%)",//"#ff8080",
     flatten(input) {
       return new THREE.Vector2(input.x, input.y);
     },
@@ -615,8 +627,8 @@ class Wall {
   });
 
   static readonly left = new Wall({
-    fillColor: "#00ff00",
-    strokeColor: "#c0ffc0",
+    fillColor: "hsl(120, 100%, 45%)",//"#00ff00",
+    strokeColor: "hsl(120, 100%, 83%)",//"#c0ffc0",
     flatten(input) {
       return new THREE.Vector2(-input.z, input.y);
     },
@@ -627,8 +639,8 @@ class Wall {
   });
 
   static readonly right = new Wall({
-    fillColor: "#0000ff",
-    strokeColor: "#c0c0ff",
+    fillColor: "hsl(240, 100%, 45%)",//"#0000ff",
+    strokeColor: "hsl(240, 100%, 83%)",//"#c0c0ff",
     flatten(input) {
       return new THREE.Vector2(input.z, input.y);
     },
@@ -639,8 +651,8 @@ class Wall {
   });
 
   static readonly top = new Wall({
-    fillColor: "#ffff00",
-    strokeColor: "#ffffc0",
+    fillColor: "hsl(60, 100%, 45%)", //This was "#ffff00" / "hsl(60, 100%, 50%)", but that was too bright to see well.
+    strokeColor: "hsl(60, 100%, 83%)", //"#ffffc0",
     flatten(input) {
       return new THREE.Vector2(input.x, input.z);
     },
@@ -651,8 +663,8 @@ class Wall {
   });
 
   static readonly bottom = new Wall({
-    fillColor: "#00ffff",
-    strokeColor: "#c0ffff",
+    fillColor: "hsl(180, 100%, 45%)",//"#00ffff",
+    strokeColor: "hsl(180, 100%, 83%)",//"#c0ffff",
     flatten(input) {
       return new THREE.Vector2(input.x, -input.z);
     },
