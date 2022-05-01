@@ -79,7 +79,8 @@ body {
 
 #bottom {
   display: grid;
-  grid-template-areas: "speed help minimap" "zoom zoom minimap";
+  grid-template-areas: "speed help minimap"
+    "zoom zoom minimap";
   grid-template-columns: 1fr auto auto;
   user-select: none;
   margin: 0.25em;

@@ -38,14 +38,14 @@ class BumpEffect {
   #canvas = document.createElement("canvas");
   #context = this.#canvas.getContext("2d")!
   #texture = new THREE.CanvasTexture(this.#canvas);
-  constructor(private readonly material : THREE.MeshPhongMaterial | THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial) {
+  constructor(private readonly material: THREE.MeshPhongMaterial | THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial) {
     if (!this.#context) {
       throw new Error("wtf");
     }
     this.#canvas.height = BumpEffect.#size;
     this.#canvas.width = BumpEffect.#size;
   }
-  private fillCanvas(x : number, y : number, radius : number) {
+  private fillCanvas(x: number, y: number, radius: number) {
     const context = this.#context;
     const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
     // The radial gradient will reflect the part that we're iterating over.
@@ -67,18 +67,18 @@ class BumpEffect {
     context.fillRect(0, 0, BumpEffect.#size, BumpEffect.#size);
     this.#texture.needsUpdate = true;
   }
-  #program : { doAnimationFrame : (time : DOMHighResTimeStamp) => void , end : () => void} |undefined;
+  #program: { doAnimationFrame: (time: DOMHighResTimeStamp) => void, end: () => void } | undefined;
   isActive() {
     return this.#program != undefined;
   }
-  doAnimationFrame(time : DOMHighResTimeStamp) {
+  doAnimationFrame(time: DOMHighResTimeStamp) {
     this.#program?.doAnimationFrame(time);
   }
   end() {
     this.#program?.end();
     this.#program = undefined;
   }
-  start(startTime : DOMHighResTimeStamp, x : number, y : number, ballVelocity : number) {
+  start(startTime: DOMHighResTimeStamp, x: number, y: number, ballVelocity: number) {
     x *= BumpEffect.#size / Wall.canvasSize;
     y *= BumpEffect.#size / Wall.canvasSize;
     //console.log({start: this, startTime, x, y, ballVelocity});
@@ -86,40 +86,61 @@ class BumpEffect {
     const endTime = startTime + 1500;
     const maxDisplacement = 3;
     const getAmplitude = makeLinear(startTime, 3, endTime, 0);
-    const getPhase = makeLinear(startTime, 0, endTime, - Math.PI*3);
+    const getPhase = makeLinear(startTime, 0, endTime, - Math.PI * 3);
     // TODO we probably want to limit the radius so the bump doesn't go off the edge.
     // In any case, this radius was just a guess.  Need to try it.
     this.fillCanvas(x, y, BumpEffect.#size / 10);
     this.material.displacementMap = this.#texture;
     this.material.displacementScale = 0;
     this.#program = {
-        doAnimationFrame : (time) => {
-          const amplitude = getAmplitude(time);
-          if (amplitude <= 0) {
-            this.end();
-          } else {
-            this.material.displacementScale = amplitude * Math.sin(getPhase(time));
-            this.material.needsUpdate = true;
-          }
-       },
-       end: () => {
-         this.material.displacementMap = null;
-         this.material.needsUpdate = true;
-        },
+      doAnimationFrame: (time) => {
+        const amplitude = getAmplitude(time);
+        if (amplitude <= 0) {
+          this.end();
+        } else {
+          this.material.displacementScale = amplitude * Math.sin(getPhase(time));
+          this.material.needsUpdate = true;
+        }
+      },
+      end: () => {
+        this.material.displacementMap = null;
+        this.material.needsUpdate = true;
+      },
     };
   }
 }
 
-type RowAndColumn = { row : number, column : number };
+type RowAndColumn = { row: number, column: number };
 
 class TicTacToe {
-  #nextMove = true;
-  //canAddMore() { return this.#canAddMore; }
-  //disable() { this.#canAddMore = false; }
-  private static toIndex(rowAndColumn : RowAndColumn) {
+  #nextMove: "X" | "O" | undefined = (Math.random() >= 0.5) ? "X" : "O";
+  canAddMore() { return this.#nextMove !== undefined; }
+  disable() { this.#nextMove = undefined; }
+  private static toIndex(rowAndColumn: RowAndColumn) {
     return rowAndColumn.row * 3 + rowAndColumn.column;
   }
-  #squares : (undefined | "X" | "O")[] = new Array(9);
+  #squares: (undefined | "X" | "O")[] = new Array(9);
+  canAdd(rowAndColumn: RowAndColumn) {
+    return this.canAddMore() && (this.#squares[TicTacToe.toIndex(rowAndColumn)] === undefined);
+  }
+  add(rowAndColumn: RowAndColumn) {
+    if (!this.canAdd(rowAndColumn)) {
+      return false;
+    } else {
+      this.#squares[TicTacToe.toIndex(rowAndColumn)] = this.#nextMove;
+      this.#nextMove = (this.#nextMove == "X") ? "O" : "X";
+      // Should we disable() this if the board is full?
+      // Should we draw a line and disable this if that move wins?
+      // Maybe TODO
+      return true;
+    }
+  }
+  static findCell(x: number, y: number): RowAndColumn {
+    function oneDimension(input: number) {
+      return Math.floor((input * 3 / Wall.canvasSize));
+    }
+    return { row: oneDimension(y), column: oneDimension(x) };
+  }
 }
 
 /**
@@ -463,6 +484,7 @@ class Wall {
     })
   );
   #bumpEffect = new BumpEffect(this.#plane.material);
+  #ticTacToe = new TicTacToe();
   private constructor(private readonly info: WallInfo) {
     info.init(this.#group);
     scene.add(this.#group);
@@ -484,7 +506,7 @@ class Wall {
     return new THREE.Vector2(Wall.xToCanvas(x), Wall.yToCanvas(y));
   }
 
-  highlightPoint(point: THREE.Vector3, time : DOMHighResTimeStamp) {
+  highlightPoint(point: THREE.Vector3, time: DOMHighResTimeStamp) {
     const { x, y } = this.flatten(point);
 
     const ballVelocity = 5;  // TODO.
@@ -568,9 +590,11 @@ class Wall {
         //console.log("square", {radius, margin, center, left, top, right, bottom});
       }
     }
-    drawTicTacToeMove();
-
-    if (!this.#bumpEffect.isActive()) {
+    const cell = TicTacToe.findCell(x, y);
+    if (this.#ticTacToe.canAdd(cell)) {
+      this.#ticTacToe.add(cell);
+      drawTicTacToeMove();
+    } else if (!this.#bumpEffect.isActive()) {
       this.#bumpEffect.start(time, x, y, ballVelocity);
     }
 
