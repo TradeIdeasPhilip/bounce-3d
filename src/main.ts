@@ -183,17 +183,6 @@ renderer.shadowMap.enabled = true;
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
 
-/**
- * The lights were all copied from various demos.
- * They don't do much, yet.
- * You can see the highlights change as the ball moves, but it's subtle.
-
-* I.e. this is just a placeholder until I learn more about lights!
- */
-const pointLight = new THREE.PointLight(0xffffff);
-pointLight.position.set(5, 5, 5);
-pointLight.castShadow = true;
-
 //const ambientLight = new THREE.AmbientLight(0xffffff);
 //scene.add(pointLight, ambientLight);
 
@@ -247,16 +236,23 @@ const materialsBack = [
 // This should be tweaked with the lights and the shadows.
 scene.fog = new THREE.Fog(0x000000, 250, 1400);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
-dirLight.position.set(0, 0, 1).normalize();
-dirLight.castShadow = true;
-scene.add(dirLight);
+//const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
+//dirLight.position.set(0, 0, 1).normalize();
+//dirLight.castShadow = true;
+//scene.add(dirLight);
 
-// Of all the lights, this one seems to help the most!  :)
-const pointLight1 = new THREE.PointLight(0xffffff, 1.5);
-pointLight.position.set(0, 100, 90);  // TODO why is this setting the position fo the first point light, not the one we just created?
+const pointLight = new THREE.PointLight(0xffffff,2/3);
+pointLight.position.set(boxMax / 2, boxMax / 4, boxMax * 1.5);
+pointLight.castShadow = true;
+pointLight.shadow.radius = 8;  // Add blur.  The default is 1.  That's totally black if this is the only light.
+scene.add(pointLight);
+const pointLight1 = new THREE.PointLight(0xffffff, 1);
+pointLight1.position.set(-boxMax / 2, boxMax / 2, boxMax * 1.5);
 pointLight1.castShadow = true;
+pointLight1.shadow.radius = 8;
 scene.add(pointLight1);
+
+(window as any).phil = {pointLight, pointLight1, scene, makeMarker};
 
 /**
  * Use these when displaying 3d extruded text.
@@ -726,7 +722,14 @@ class Wall {
   }
 }
 
-function makeMarker(x = 0, y = 0, z = 0) {
+function makeMarker(x? : number, y? : number, z? : number) : THREE.Object3D;
+function makeMarker(source : THREE.Object3D) : THREE.Object3D;
+function makeMarker(x : number | THREE.Object3D = 0, y = 0, z = 0) : THREE.Object3D {
+  if (x instanceof THREE.Object3D) {
+    z = x.position.z;
+    y = x.position.y;
+    x = x.position.x;
+  }
   const geometry = new THREE.SphereBufferGeometry(1, 24, 24);
   const material = new THREE.MeshPhongMaterial({ color: 0xff2020 });
   const marker = new THREE.Mesh(geometry, material);
