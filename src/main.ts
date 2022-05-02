@@ -241,7 +241,7 @@ scene.fog = new THREE.Fog(0x000000, 250, 1400);
 //dirLight.castShadow = true;
 //scene.add(dirLight);
 
-const pointLight = new THREE.PointLight(0xffffff,2/3);
+const pointLight = new THREE.PointLight(0xffffff, 2 / 3);
 pointLight.position.set(boxMax / 2, boxMax / 4, boxMax * 1.5);
 pointLight.castShadow = true;
 pointLight.shadow.radius = 8;  // Add blur.  The default is 1.  That's totally black if this is the only light.
@@ -252,7 +252,7 @@ pointLight1.castShadow = true;
 pointLight1.shadow.radius = 8;
 scene.add(pointLight1);
 
-(window as any).phil = {pointLight, pointLight1, scene, makeMarker};
+(window as any).phil = { pointLight, pointLight1, scene, makeMarker };
 
 /**
  * Use these when displaying 3d extruded text.
@@ -596,7 +596,6 @@ class Wall {
       this.#bumpEffect.start(time, x, y, ballVelocity);
     }
 
-    //console.log("%O %ccolor", { point : {...point}, x, y, canvasX, canvasY}, `color:${this.info.fillColor}; background:${this.info.strokeColor};`);
     this.#texture.needsUpdate = true;
   }
 
@@ -722,15 +721,28 @@ class Wall {
   }
 }
 
-function makeMarker(x? : number, y? : number, z? : number) : THREE.Object3D;
-function makeMarker(source : THREE.Object3D) : THREE.Object3D;
-function makeMarker(x : number | THREE.Object3D = 0, y = 0, z = 0) : THREE.Object3D {
+const ballRadius = 1;
+
+/**
+ * @param x 
+ * @param y 
+ * @param z 
+ * @returns The ball.
+ */
+function makeMarker(x?: number, y?: number, z?: number): THREE.Object3D;
+/**
+ * Create a ball at the given position and add it to the scene.
+ * @param source Put the marker in the same position as this object.
+ * @returns The ball.
+ */
+function makeMarker(source: THREE.Object3D): THREE.Object3D;
+function makeMarker(x: number | THREE.Object3D = 0, y = 0, z = 0): THREE.Object3D {
   if (x instanceof THREE.Object3D) {
     z = x.position.z;
     y = x.position.y;
     x = x.position.x;
   }
-  const geometry = new THREE.SphereBufferGeometry(1, 24, 24);
+  const geometry = new THREE.SphereBufferGeometry(ballRadius, 24, 24);
   const material = new THREE.MeshPhongMaterial({ color: 0xff2020 });
   const marker = new THREE.Mesh(geometry, material);
   marker.position.set(x, y, z);
@@ -756,8 +768,8 @@ let lastBallUpdate: number | undefined;
 
 // The _center_ of the ball can _not_ go all the way to the wall.
 // Always reserve one ball radius.
-const ballMin = boxMin + 0.5;
-const ballMax = boxMax - 0.5;
+const ballMin = boxMin + ballRadius;
+const ballMax = boxMax - ballRadius;
 
 function updateBall(time: DOMHighResTimeStamp) {
   if (lastBallUpdate !== undefined) {
@@ -953,6 +965,7 @@ observer.observe(canvasHolder, { box: "device-pixel-content-box" });
 
     const speed = scaleSpeedFromGui(inputSpeed);
     ballVelocity = randomDirection3(speed);
+    /*
     console.log({
       inputSpeed,
       speed,
@@ -963,6 +976,7 @@ observer.observe(canvasHolder, { box: "device-pixel-content-box" });
         ballVelocity.z
       ),
     });
+    */
   };
 
   speedControlUpdate();
