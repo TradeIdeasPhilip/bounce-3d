@@ -18,11 +18,12 @@ import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?u
 import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
 import { getById } from "./lib/client-misc";
-import { FIGURE_SPACE, makeLinear, pick, polarToRectangular } from "./lib/misc";
+import { countMap, FIGURE_SPACE, makeLinear, pick, polarToRectangular } from "./lib/misc";
 
 // Source:  https://methodshop.com/batman-fight-words/
 import batmanFightWords from "./batman-fight-words.json";
 import { Point } from "roughjs/bin/geometry";
+import { RoughCanvas } from "roughjs/bin/canvas";
 
 // Coordinates in the 3d world:
 // x=0 is the center of the viewing area / box.
@@ -111,27 +112,118 @@ class BumpEffect {
 }
 
 type RowAndColumn = { row: number, column: number };
+type CellContents = "X" | "O" | undefined;
 
 class TicTacToe {
-  #nextMove: "X" | "O" | undefined = (Math.random() >= 0.5) ? "X" : "O";
+  constructor(private readonly roughCanvas : RoughCanvas,
+    private readonly wallInfo : Readonly<WallInfo>) {
+  }
+  #nextMove: CellContents = (Math.random() >= 0.5) ? "X" : "O";
   canAddMore() { return this.#nextMove !== undefined; }
   disable() { this.#nextMove = undefined; }
   private static toIndex(rowAndColumn: RowAndColumn) {
     return rowAndColumn.row * 3 + rowAndColumn.column;
   }
-  #squares: (undefined | "X" | "O")[] = new Array(9);
+  #squares: CellContents[] = Array.from(new Array(9));
   canAdd(rowAndColumn: RowAndColumn) {
     return this.canAddMore() && (this.#squares[TicTacToe.toIndex(rowAndColumn)] === undefined);
+  }
+  private static cellCenter(cellIndex : number ) {
+    return cellIndex * Wall.canvasSize / 3 + Wall.canvasSize / 6;
   }
   add(rowAndColumn: RowAndColumn) {
     if (!this.canAdd(rowAndColumn)) {
       return false;
     } else {
-      this.#squares[TicTacToe.toIndex(rowAndColumn)] = this.#nextMove;
-      this.#nextMove = (this.#nextMove == "X") ? "O" : "X";
-      // Should we disable() this if the board is full?
-      // Should we draw a line and disable this if that move wins?
-      // Maybe TODO
+      const thisMove = this.#nextMove;
+      this.#squares[TicTacToe.toIndex(rowAndColumn)] = thisMove;
+      this.#nextMove = (thisMove == "X") ? "O" : "X";
+
+      const margin = Wall.margin;
+      const radius = Wall.canvasSize / 6 - margin;
+      const center = {x : TicTacToe.cellCenter(rowAndColumn.column),
+      y: TicTacToe.cellCenter(rowAndColumn.row) };
+      if (thisMove == "O") {
+        this.roughCanvas.circle(center.x, center.y, radius * 2, {
+          stroke: this.wallInfo.strokeColor,
+          strokeWidth: 7 + Math.random() * 2,
+          roughness: 3,
+          disableMultiStroke: true
+        });
+        //console.log("circle", {radius, margin, center});
+      } else {
+        const left = center.x - radius;
+        const right = center.x + radius;
+        const top = center.y - radius;
+        const bottom = center.y + radius;
+        const options: Options = {
+          stroke: this.wallInfo.strokeColor,
+          strokeWidth: 7 + Math.random() * 2,
+          roughness: 4,
+          bowing: 4,
+          disableMultiStroke: true
+        };
+        this.roughCanvas.line(left, top, right, bottom, options);
+        this.roughCanvas.line(left, bottom, right, top, options);
+        //console.log("square", {radius, margin, center, left, top, right, bottom});
+      }
+
+      if (this.#squares.every(value => value)) {
+        // The board is full.
+        this.disable();
+      }
+
+      const isWinner = (positions: RowAndColumn[]): CellContents => {
+        const items = positions.map(position => this.#squares[TicTacToe.toIndex(position)]);
+        if (items.every(item => item == "X")) {
+          this.disable();
+          return "X";
+        } else if (items.every(item => item == "O")) {
+          this.disable();
+          return "O";
+        } else {
+          return undefined;
+        }
+      };
+      const drawSuccess = (x1 : number, y1 : number, x2: number, y2: number) => {
+        const options: Options = {
+          stroke: this.wallInfo.strokeColor,
+          strokeWidth: 10,
+          roughness: 4,
+          bowing: 4,
+          disableMultiStroke: true
+        };
+        const random = () => (Math.random() - 0.5) * Wall.margin;
+        this.roughCanvas.line(x1 + random(), y1 + random(), x2 + random(), y2 + random(), options);
+      };
+      const offset = margin / 2;
+      for (let row = 0; row < 3; row++) {
+        const positions = countMap(3, column => { return { row, column }; });
+        if (isWinner(positions)) {
+          console.log(`winner in row ${row}`);
+          const y = TicTacToe.cellCenter(row);
+          drawSuccess(offset, y, Wall.canvasSize - offset, y);
+        }
+      }
+      for (let column = 0; column < 3; column++) {
+        const positions = countMap(3, row => { return { row, column }; });
+        if (isWinner(positions)) {
+          console.log(`winner in column ${column}`);
+          const x = TicTacToe.cellCenter(column);
+          drawSuccess(x, offset, x, Wall.canvasSize - offset);
+        }
+      }
+      const fromTopLeft = countMap(3, i => { return { row: i, column : i };} );
+      if (isWinner(fromTopLeft)) {
+        drawSuccess(offset, offset, Wall.canvasSize - offset, Wall.canvasSize - offset);
+        console.log("Winner in diagonal from top left.");
+      }
+      const fromTopRight = countMap(3, i => { return { row: i, column : 3 - i };} );
+      if (isWinner(fromTopRight)) {
+        drawSuccess(offset, Wall.canvasSize - offset, Wall.canvasSize - offset, offset);
+        console.log("Winner in diagonal from top right.");
+      }
+
       return true;
     }
   }
@@ -254,12 +346,12 @@ scene.fog = new THREE.Fog(0x000000, 250, 1400);
 //dirLight.castShadow = true;
 //scene.add(dirLight);
 
-const rightLight = new THREE.SpotLight(0xffffff, 2 / 3, 0, Math.PI/2);
+const rightLight = new THREE.SpotLight(0xffffff, 2 / 3, 0, Math.PI / 2);
 rightLight.position.set(boxMax / 2, boxMax / 4, boxMax * 1.5);
 rightLight.castShadow = true;
 rightLight.shadow.radius = 8;  // Add blur.  The default is 1.  That's totally black if this is the only light.
 scene.add(rightLight);
-const leftLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI/2);
+const leftLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2);
 leftLight.position.set(-boxMax / 2, boxMax / 2, boxMax * 1.5);
 leftLight.castShadow = true;
 leftLight.shadow.radius = 8;  // https://stackoverflow.com/a/53522410/971955
@@ -435,7 +527,7 @@ class Wall {
    */
   static readonly canvasSize = 600;
 
-  protected static readonly margin = this.canvasSize / 20;
+  static readonly margin = this.canvasSize / 20;
 
   /**
    * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
@@ -495,8 +587,9 @@ class Wall {
     })
   );
   #bumpEffect = new BumpEffect(this.#plane.material);
-  #ticTacToe = new TicTacToe();
+  #ticTacToe : TicTacToe;
   private constructor(private readonly info: WallInfo) {
+    this.#ticTacToe = new TicTacToe(this.#roughCanvas, this.info);
     info.init(this.#group);
     scene.add(this.#group);
     this.#canvas.width = Wall.canvasSize;
@@ -571,40 +664,9 @@ class Wall {
       return { x: findDimensionCenter(x), y: findDimensionCenter(y) };
     }
 
-    const drawTicTacToeMove = () => {
-      // TODO only do this if the cell is free.  Otherwise choose a different type of drawing.
-      const margin = Wall.margin;
-      const radius = canvasSize / 6 - margin;
-      const center = findCellCenter();
-      if (Math.random() < 0.5) {
-        this.#roughCanvas.circle(center.x, center.y, radius * 2, {
-          stroke: this.info.strokeColor,
-          strokeWidth: 7 + Math.random() * 2,
-          roughness: 3,
-          disableMultiStroke: true
-        });
-        //console.log("circle", {radius, margin, center});
-      } else {
-        const left = center.x - radius;
-        const right = center.x + radius;
-        const top = center.y - radius;
-        const bottom = center.y + radius;
-        const options: Options = {
-          stroke: this.info.strokeColor,
-          strokeWidth: 7 + Math.random() * 2,
-          roughness: 4,
-          bowing: 4,
-          disableMultiStroke: true
-        };
-        this.#roughCanvas.line(left, top, right, bottom, options);
-        this.#roughCanvas.line(left, bottom, right, top, options);
-        //console.log("square", {radius, margin, center, left, top, right, bottom});
-      }
-    }
     const cell = TicTacToe.findCell(x, y);
     if (this.#ticTacToe.canAdd(cell)) {
       this.#ticTacToe.add(cell);
-      drawTicTacToeMove();
     } else if (!this.#bumpEffect.isActive()) {
       this.#bumpEffect.start(time, x, y, ballVelocity);
     }
