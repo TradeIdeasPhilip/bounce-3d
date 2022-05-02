@@ -34,10 +34,24 @@ import { RoughCanvas } from "roughjs/bin/canvas";
 // z=0 is the center of the viewing area / box.
 // Positive z moves toward the camera.  Negative z moves toward the horizon.
 
+/**
+ * Normally the walls are flat.
+ * This is the effect that makes the wall wiggle and bounce when it gets hit.
+ * There is one small "bump" where the ball made impact.
+ */
 class BumpEffect {
-  static readonly #size = 300;
+  /**
+   * This is the length and width of the canvas used to define the shape of the bump.
+   * Bigger gives more precision.
+   * However, it will all get mapped down to the points and triangles in the plane,
+   * so if you go much beyond that it won't do much good.
+   */
+  static readonly #size = 300;  // TODO Define this in terms of Wall.canvasSize!  Or the number of if heightSegments and widthSegments in each wall.
+  /* This is the canvas used to define the shape of the bump. */
   #canvas = document.createElement("canvas");
+  /* This can draw on the canvas used to define the shape of the bump. */
   #context = this.#canvas.getContext("2d")!
+  /* This is a wrapper around the canvas used to define the shape of the bump. */
   #texture = new THREE.CanvasTexture(this.#canvas);
   constructor(private readonly material: THREE.MeshPhongMaterial | THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial) {
     if (!this.#context) {
@@ -46,6 +60,13 @@ class BumpEffect {
     this.#canvas.height = BumpEffect.#size;
     this.#canvas.width = BumpEffect.#size;
   }
+  /**
+   * 
+   * @param x The location of the center of the bump, in this.#canvas's coordinates.
+   * @param y The location of the center of the bump, in this.#canvas's coordinates.
+   * @param radius The radius of the bump, in this.#canvas's coordinates.  
+   * Note that the bump has _very_ soft edges, so this number will be bigger than you might expect after viewing the bump.
+   */
   private fillCanvas(x: number, y: number, radius: number) {
     const context = this.#context;
     const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
@@ -68,18 +89,50 @@ class BumpEffect {
     context.fillRect(0, 0, BumpEffect.#size, BumpEffect.#size);
     this.#texture.needsUpdate = true;
   }
+  /**
+   * This describes the progress of the current animation.
+   * This is undefined if no animation is currently active.
+   * Otherwise call this #program.doAnimationFrame() once per animation frame,
+   * and call #program.end() to clean up when the program is done.
+   */
   #program: { doAnimationFrame: (time: DOMHighResTimeStamp) => void, end: () => void } | undefined;
+  /**
+   * 
+   * @returns True if an animation is currently in progress.
+   */
   isActive() {
     return this.#program != undefined;
   }
+  /**
+   * Call this once per animation frame.
+   * @param time Standard timestamp used by performance.now() and animation frames.
+   */
   doAnimationFrame(time: DOMHighResTimeStamp) {
     this.#program?.doAnimationFrame(time);
   }
+  /**
+   * Clean up after the animation is done.
+   * This can be called at any time to abort the animation and leave the wall in a reasonable state.
+   * This object will automatically call `end()` when the current animation is finished.
+   * 
+   * The animation will be smoother if `end()` is only called internally.
+   */
   end() {
     this.#program?.end();
     this.#program = undefined;
   }
-  start(startTime: DOMHighResTimeStamp, x: number, y: number, ballVelocity: number) {
+  /**
+   * Start the animation.
+   * 
+   * You can start it at any time.
+   * However, the animation will look smoother 
+   * if you wait for the previous animation to finish before starting a new one.
+   * See `this.isActive()`.
+   * @param startTime Standard animation time value.
+   * @param x Where the ball hit the wall, in the wall's canvas's coordinates.
+   * @param y Where the ball hit the wall, in the wall's canvas's coordinates.
+   */
+  start(startTime: DOMHighResTimeStamp, x: number, y: number) {
     x *= BumpEffect.#size / Wall.canvasSize;
     y *= BumpEffect.#size / Wall.canvasSize;
     //console.log({start: this, startTime, x, y, ballVelocity});
@@ -88,8 +141,6 @@ class BumpEffect {
     const maxDisplacement = 3;
     const getAmplitude = makeLinear(startTime, 3, endTime, 0);
     const getPhase = makeLinear(startTime, 0, endTime, - Math.PI * 3);
-    // TODO we probably want to limit the radius so the bump doesn't go off the edge.
-    // In any case, this radius was just a guess.  Need to try it.
     this.fillCanvas(x, y, BumpEffect.#size / 10);
     this.material.displacementMap = this.#texture;
     this.material.displacementScale = 0;
@@ -111,26 +162,111 @@ class BumpEffect {
   }
 }
 
-type RowAndColumn = { row: number, column: number };
+/**
+ * Tic-tac-toe coordinates.
+ */
+type RowAndColumn = {
+  /**
+   * 0 for the top row.
+   * 1 for the middle row.
+   * 2 for the bottom row.
+   */
+  row: number,
+  /**
+   * 0 for the left column.
+   * 1 for the middle column.
+   * 2 for the right column.
+   */ 
+   column: number
+ };
+
+ /** 
+  * Each cell on the board will have one of these three things in it.
+  */
 type CellContents = "X" | "O" | undefined;
 
+/**
+ * This draws the moves on the wall.
+ * And it keeps track of the state of the game.
+ */
 class TicTacToe {
-  constructor(private readonly roughCanvas : RoughCanvas,
-    private readonly wallInfo : Readonly<WallInfo>) {
+  /**
+   * 
+   * @param roughCanvas Used to draw on the wall.
+   * @param wallInfo Describes the wall.
+   */
+  constructor(private readonly roughCanvas: RoughCanvas,
+    private readonly wallInfo: Readonly<WallInfo>) {
   }
+  /**
+   * Alternate between X's move and O's move.
+   * Randomly pick who goes first.
+   * Set this to undefined when the game is over.
+   */
   #nextMove: CellContents = (Math.random() >= 0.5) ? "X" : "O";
+  /**
+   * 
+   * @returns True if there is at least one legal move left.
+   * False if the game is over.
+   */
   canAddMore() { return this.#nextMove !== undefined; }
+  /**
+   * Mark the game as over.
+   * 
+   * This is called internally / automatically if someone wins or if there is a tie.
+   * 
+   * This can be called externally.  Typically the main program will let the tic-tac-toe
+   * game run as long as it can.  It gets a high priority because this effect lasts for
+   * many bounces and most special effects only last for one bounce.
+   * 
+   * However, the main program includes some randomness.  It might chose to abort the game
+   * so it can draw other things on top of the board.
+   */
   disable() { this.#nextMove = undefined; }
+  /**
+   * @param rowAndColumn Which cell on the board.
+   * @returns Which index in this.#squares.
+   */
   private static toIndex(rowAndColumn: RowAndColumn) {
     return rowAndColumn.row * 3 + rowAndColumn.column;
   }
+  /**
+   * What moves have been taken so far.
+   * Use `toIndex()` to create an index into this array.
+   */
+  // `new Array(9)` will be filled with 9 "empty" elements.
+  // That is *not* the same as undefined!
+  // [] and for/of work as expected, but .forEach() and .some() skip the "empty" elements.
+  // .map() does a hybrid!
+  // I cannot find any good documentation on the subject.
+  // Array.from() fixes the problem.
   #squares: CellContents[] = Array.from(new Array(9));
+  /**
+   * 
+   * @param rowAndColumn The space to inspect.
+   * @returns True if it would be legal to add a move in this space right now.
+   * False if the game is over and/or this space is full.
+   */
   canAdd(rowAndColumn: RowAndColumn) {
     return this.canAddMore() && (this.#squares[TicTacToe.toIndex(rowAndColumn)] === undefined);
   }
-  private static cellCenter(cellIndex : number ) {
+  /**
+   * Convert from tic-tac-toe coordinates to canvas coordinates.
+   * 
+   * Use TicTacTow.findCell() to go the other direction.
+   * @param cellIndex The row or column from a RowAndColumn.
+   * @returns The corresponding x or y for the wall's canvas.
+   */
+  private static cellCenter(cellIndex: number) {
     return cellIndex * Wall.canvasSize / 3 + Wall.canvasSize / 6;
   }
+  /**
+   * Try to move in the given position.
+   * On success, update the display and the internal representation.
+   * If that move is not possible, do nothing.
+   * @param rowAndColumn Where to try to place the next move.
+   * @returns true if we made the move, false if we didn't.
+   */
   add(rowAndColumn: RowAndColumn) {
     if (!this.canAdd(rowAndColumn)) {
       return false;
@@ -139,10 +275,13 @@ class TicTacToe {
       this.#squares[TicTacToe.toIndex(rowAndColumn)] = thisMove;
       this.#nextMove = (thisMove == "X") ? "O" : "X";
 
+      // Draw the current move.
       const margin = Wall.margin;
       const radius = Wall.canvasSize / 6 - margin;
-      const center = {x : TicTacToe.cellCenter(rowAndColumn.column),
-      y: TicTacToe.cellCenter(rowAndColumn.row) };
+      const center = {
+        x: TicTacToe.cellCenter(rowAndColumn.column),
+        y: TicTacToe.cellCenter(rowAndColumn.row)
+      };
       if (thisMove == "O") {
         this.roughCanvas.circle(center.x, center.y, radius * 2, {
           stroke: this.wallInfo.strokeColor,
@@ -168,11 +307,16 @@ class TicTacToe {
         //console.log("square", {radius, margin, center, left, top, right, bottom});
       }
 
+      // Check for end of game because there are no more moves to make.
+      // The main program might act differently when the entire game is over
+      // (see this.canAddMore()) vs just this cell is full.
       if (this.#squares.every(value => value)) {
         // The board is full.
         this.disable();
       }
 
+      // Check for a winner.
+      // If found, update the display and the internal representation.
       const isWinner = (positions: RowAndColumn[]): CellContents => {
         const items = positions.map(position => this.#squares[TicTacToe.toIndex(position)]);
         if (items.every(item => item == "X")) {
@@ -185,22 +329,41 @@ class TicTacToe {
           return undefined;
         }
       };
-      const drawSuccess = (x1 : number, y1 : number, x2: number, y2: number) => {
+      /**
+       * Draw a line to show the winning move.
+       * @param x1 
+       * @param y1 
+       * @param x2 
+       * @param y2 
+       */
+      const drawSuccess = (x1: number, y1: number, x2: number, y2: number) => {
         const options: Options = {
           stroke: this.wallInfo.strokeColor,
-          strokeWidth: 10,
+          strokeWidth: 20,
           roughness: 4,
-          bowing: 4,
+          bowing: 8,
           disableMultiStroke: true
         };
+        /**
+         * Rough.js doesn't change the endpoints much.  So I add my own randomness.
+         * This is important here because we are drawing on top of other items,
+         * and I don't want all the different items to line up perfectly. 
+         * @returns A small random value.
+         */
         const random = () => (Math.random() - 0.5) * Wall.margin;
         this.roughCanvas.line(x1 + random(), y1 + random(), x2 + random(), y2 + random(), options);
       };
+      /**
+       * Put the ends of the line segment in the margin.
+       * 
+       * There is always empty space separating the edge of the plan from the board, the X's and the O's.
+       * The ends of this new line segment will be in that space.
+       */
       const offset = margin / 2;
       for (let row = 0; row < 3; row++) {
         const positions = countMap(3, column => { return { row, column }; });
         if (isWinner(positions)) {
-          console.log(`winner in row ${row}`);
+          //console.log(`winner in row ${row}`);
           const y = TicTacToe.cellCenter(row);
           drawSuccess(offset, y, Wall.canvasSize - offset, y);
         }
@@ -208,25 +371,45 @@ class TicTacToe {
       for (let column = 0; column < 3; column++) {
         const positions = countMap(3, row => { return { row, column }; });
         if (isWinner(positions)) {
-          console.log(`winner in column ${column}`);
+          //console.log(`winner in column ${column}`);
           const x = TicTacToe.cellCenter(column);
           drawSuccess(x, offset, x, Wall.canvasSize - offset);
         }
       }
-      const fromTopLeft = countMap(3, i => { return { row: i, column : i };} );
+      const fromTopLeft = countMap(3, i => { return { row: i, column: i }; });
       if (isWinner(fromTopLeft)) {
         drawSuccess(offset, offset, Wall.canvasSize - offset, Wall.canvasSize - offset);
-        console.log("Winner in diagonal from top left.");
+        //console.log("Winner in diagonal from top left.");
       }
-      const fromTopRight = countMap(3, i => { return { row: i, column : 3 - i };} );
+      const fromTopRight = countMap(3, i => { return { row: i, column: 3 - i }; });
       if (isWinner(fromTopRight)) {
         drawSuccess(offset, Wall.canvasSize - offset, Wall.canvasSize - offset, offset);
-        console.log("Winner in diagonal from top right.");
+        // TODO Bug:
+        // One time I saw this message and the corresponding line when I shouldn't have.
+        // The program correctly identified a winner in the middle row.
+        // But it also identified a winner in this diagonal which was not true.
+        // Board state:
+        //    | O | O
+        // ---+---+---
+        //  X | X | X
+        // ---+---+---
+        //  O | X |
+        // I only saw this once, but I took a screen shot so I know it was real.
+        //console.log("Winner in diagonal from top right.");
       }
 
       return true;
     }
   }
+
+  /**
+   * Converts from canvas coordinates into tic-tac-toe squares.
+   * 
+   * Use TicTacToe.cellCenter() to go the other direction.
+   * @param x Canvas coordinates.
+   * @param y Canvas coordinates.
+   * @returns Which of the 9 squares of the tic-tac-toe board contains the input.
+   */
   static findCell(x: number, y: number): RowAndColumn {
     function oneDimension(input: number) {
       return Math.floor((input * 3 / Wall.canvasSize));
@@ -583,11 +766,12 @@ class Wall {
     new THREE.PlaneBufferGeometry(boxSize, boxSize, 50, 50),
     new THREE.MeshPhongMaterial({
       map: this.#texture,
+      //transparent:true
       //flatShading: true
     })
   );
   #bumpEffect = new BumpEffect(this.#plane.material);
-  #ticTacToe : TicTacToe;
+  #ticTacToe: TicTacToe;
   private constructor(private readonly info: WallInfo) {
     this.#ticTacToe = new TicTacToe(this.#roughCanvas, this.info);
     info.init(this.#group);
@@ -613,15 +797,7 @@ class Wall {
   highlightPoint(point: THREE.Vector3, time: DOMHighResTimeStamp) {
     const { x, y } = this.flatten(point);
 
-    const ballVelocity = 5;  // TODO.
-
-
     //this.makeWall();
-    /*
-    const context = this.#canvas.getContext("2d")!;
-    context.fillStyle = "#FF00FF";
-    context.fillRect(0, 0, canvasX, canvasY);
-    */
 
     const drawCircle = () => {
       this.#roughCanvas.circle(x, y, Wall.canvasSize / 5, {
@@ -668,7 +844,7 @@ class Wall {
     if (this.#ticTacToe.canAdd(cell)) {
       this.#ticTacToe.add(cell);
     } else if (!this.#bumpEffect.isActive()) {
-      this.#bumpEffect.start(time, x, y, ballVelocity);
+      this.#bumpEffect.start(time, x, y);
     }
 
     this.#texture.needsUpdate = true;
