@@ -176,9 +176,22 @@ const camera = new THREE.PerspectiveCamera(
 const renderer = new THREE.WebGLRenderer({
   canvas,
 });
-// I have yet to see a single shadow.
-// TODO find and fix the problem.
-renderer.shadowMap.enabled = true;
+// TODO I had shadows working when I use using PointLight.
+// But things stopped when I switched to SpotLight.
+// That makes no sense!
+// 
+// I'm temporarily disabling the shadows.
+// They don't work with the existing code.  The and
+// PointLight code was *really* slow.
+//
+// I want to try again.  The slow code looked really good!
+// 
+// https://threejs.org/docs/#api/en/constants/Renderer (shadow types)
+// https://threejs.org/docs/#api/en/lights/SpotLight
+// https://threejs.org/docs/#api/en/lights/shadows/SpotLightShadow
+// https://r105.threejsfundamentals.org/threejs/lessons/threejs-shadows.html
+//renderer.shadowMap.enabled = true;
+//renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
@@ -241,18 +254,18 @@ scene.fog = new THREE.Fog(0x000000, 250, 1400);
 //dirLight.castShadow = true;
 //scene.add(dirLight);
 
-const pointLight = new THREE.PointLight(0xffffff, 2 / 3);
-pointLight.position.set(boxMax / 2, boxMax / 4, boxMax * 1.5);
-pointLight.castShadow = true;
-pointLight.shadow.radius = 8;  // Add blur.  The default is 1.  That's totally black if this is the only light.
-scene.add(pointLight);
-const pointLight1 = new THREE.PointLight(0xffffff, 1);
-pointLight1.position.set(-boxMax / 2, boxMax / 2, boxMax * 1.5);
-pointLight1.castShadow = true;
-pointLight1.shadow.radius = 8;
-scene.add(pointLight1);
+const rightLight = new THREE.SpotLight(0xffffff, 2 / 3, 0, Math.PI/2);
+rightLight.position.set(boxMax / 2, boxMax / 4, boxMax * 1.5);
+rightLight.castShadow = true;
+rightLight.shadow.radius = 8;  // Add blur.  The default is 1.  That's totally black if this is the only light.
+scene.add(rightLight);
+const leftLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI/2);
+leftLight.position.set(-boxMax / 2, boxMax / 2, boxMax * 1.5);
+leftLight.castShadow = true;
+leftLight.shadow.radius = 8;  // https://stackoverflow.com/a/53522410/971955
+scene.add(leftLight);
 
-(window as any).phil = { pointLight, pointLight1, scene, makeMarker };
+(window as any).phil = { rightLight, leftLight, scene, makeMarker };
 
 /**
  * Use these when displaying 3d extruded text.
