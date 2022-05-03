@@ -19,6 +19,7 @@ I want to make the shadows work!
 ## See it Running
 * [Run it yourself](https://tradeideasphilip.github.io/bounce-3d/)
 * [Watch on YouTube](https://youtu.be/OEnWbJ4_FKY) (_very_ old)
+* [Watch a version with shadows](https://youtu.be/eXZiy4KwqwY)
 
 ## How to Run Locally
 * Clone this project with git.

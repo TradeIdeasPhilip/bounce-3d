@@ -381,20 +381,19 @@ class TicTacToe {
         drawSuccess(offset, offset, Wall.canvasSize - offset, Wall.canvasSize - offset);
         //console.log("Winner in diagonal from top left.");
       }
-      const fromTopRight = countMap(3, i => { return { row: i, column: 3 - i }; });
+
+      // Oops.  This was a bug:
+      // const fromTopRight = countMap(3, i => { return { row: i, column: 3 - i }; });
+      // console.log(fromTopRight);
+      // => [{"row":0,"column":3},{"row":1,"column":2},{"row":2,"column":1}]
+
+      // This is the corrected version:
+      const fromTopRight = countMap(3, i => { return { row: i, column: 2 - i }; });
+      // console.log(JSON.stringify(fromTopRight));
+      // => [{"row":0,"column":2},{"row":1,"column":1},{"row":2,"column":0}]
+
       if (isWinner(fromTopRight)) {
         drawSuccess(offset, Wall.canvasSize - offset, Wall.canvasSize - offset, offset);
-        // TODO Bug:
-        // One time I saw this message and the corresponding line when I shouldn't have.
-        // The program correctly identified a winner in the middle row.
-        // But it also identified a winner in this diagonal which was not true.
-        // Board state:
-        //    | O | O
-        // ---+---+---
-        //  X | X | X
-        // ---+---+---
-        //  O | X |
-        // I only saw this once, but I took a screen shot so I know it was real.
         //console.log("Winner in diagonal from top right.");
       }
 
