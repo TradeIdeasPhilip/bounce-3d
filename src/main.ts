@@ -35,6 +35,131 @@ import { RoughCanvas } from "roughjs/bin/canvas";
 // Positive z moves toward the camera.  Negative z moves toward the horizon.
 
 /**
+ * The largest position we care about in the 3d coordinates.
+ * 0 is the center of the box.
+ */
+const boxMax = 14;
+
+/**
+ * The smallest position we care about in the 3d coordinates.
+ * 0 is the center of the box.
+ */
+const boxMin = -boxMax;
+
+/**
+ * The size of the box where the ball is bouncing, in 3d coordinates.
+ */
+const boxSize = boxMax - boxMin;
+
+const scene = new THREE.Scene();
+
+abstract class Wall {
+  /**
+   * Width and height of the canvas.
+   * The number is arbitrary, but a higher number will have more precision and a higher cost.
+   * The canvas will be projected onto a surface that is not a square, so I don't know that there is any ideal value here.
+   */
+  static readonly canvasSize = 600;
+
+  static readonly margin = this.canvasSize / 20;
+
+  /**
+   * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
+   * @param x The x coordinate that comes from WallInfo.flatten().x
+   * @returns The corresponding x coordinate on the canvas.
+   */
+  protected static readonly xToCanvas = makeLinear(
+    boxMin,
+    0,
+    boxMax,
+    this.canvasSize
+  );
+
+  /**
+   * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
+   * @param y The y coordinate that comes from WallInfo.flatten().y
+   * @returns The corresponding x coordinate on the canvas.
+   */
+  protected static readonly yToCanvas = makeLinear(
+    boxMin,
+    this.canvasSize,
+    boxMax,
+    0
+  );
+
+  /**
+   * Draw on this at any time.
+   * (Ideally but not necessarily in the animationFrame callback.)
+   *
+   * Set `this.texture.needsUpdate = true;` at any time to copy from the canvas to the 3d object.
+   * The copy will probably happen in the next animationFrame callback.
+   *
+   * Each wall gets its own canvas because the update isn't done immediately.
+   * The canvas holds the image until the renderer is ready for it.
+   */
+  protected readonly canvas = document.createElement("canvas");
+
+  protected readonly roughCanvas = rough.canvas(this.canvas);
+  protected readonly texture = new THREE.CanvasTexture(this.canvas);
+
+  abstract highlightPoint(point: THREE.Vector3, time: number): void;
+  abstract doAnimationFrame(time: DOMHighResTimeStamp): void;
+}
+
+class FrontWall extends Wall {
+  private static readonly img = getById("bulletGlass", HTMLImageElement);
+  private static readonly MAX_GLASS_SIZE = 250 / 704 * this.canvasSize;
+  private static readonly MIN_GLASS_SIZE = this.MAX_GLASS_SIZE * 0.66;
+  private static readonly randomToGlass = makeLinear(0, this.MIN_GLASS_SIZE, 1, this.MAX_GLASS_SIZE);
+  #plane = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(boxSize, boxSize),
+    // The cracked glass effect looks the best when it is well lit!
+    // When I used the Phong material it looked best when the crack was at the top,
+    // where there is more direct lighting.  With the Basic material the crack looks
+    // good everywhere.
+    new THREE.MeshBasicMaterial({
+      map: this.texture,
+      transparent: true
+    })
+  );
+
+  highlightPoint(point: THREE.Vector3, time: number): void {
+    const centerX = Wall.xToCanvas(point.x);
+    const centerY = Wall.yToCanvas(point.y);
+    const width = FrontWall.randomToGlass(Math.random());
+    const height = Math.min(FrontWall.MAX_GLASS_SIZE, Math.max(FrontWall.MIN_GLASS_SIZE, width * (Math.random() * 0.2 + 0.9)));
+    const context = this.canvas.getContext("2d")!;
+    context.clearRect(0, 0, Wall.canvasSize, Wall.canvasSize);
+    const sourceSize = FrontWall.img.naturalHeight;
+    if (sourceSize <= 0) {
+      // Image not loaded
+      return;
+    }
+    const destinationX = centerX - width / 2;
+    const destinationY = centerY - height / 2;
+    console.log({ point, centerX, centerY, sourceSize, width, height, destinationX, destinationY, });
+    context.drawImage(FrontWall.img, 0, 0, sourceSize, sourceSize, destinationX, destinationY, width, height);
+    ///context.fillStyle="blue";
+    //context.fillRect(0, 0, 100, 100)
+    //context.drawImage(FrontWall.img, 0, 0);
+    this.texture.needsUpdate = true;
+  }
+  doAnimationFrame(time: DOMHighResTimeStamp) {
+    // TODO Fade away over time. 
+    // Material.oopacity would be a good place to start.
+  }
+  private constructor() {
+    super();
+    this.canvas.width = Wall.canvasSize;
+    this.canvas.height = Wall.canvasSize;
+
+    this.#plane.position.z = boxMax;
+    scene.add(this.#plane);
+  }
+  static readonly instance = new FrontWall();
+}
+
+/**
  * Normally the walls are flat.
  * This is the effect that makes the wall wiggle and bounce when it gets hit.
  * There is one small "bump" where the ball made impact.
@@ -176,13 +301,13 @@ type RowAndColumn = {
    * 0 for the left column.
    * 1 for the middle column.
    * 2 for the right column.
-   */ 
-   column: number
- };
+   */
+  column: number
+};
 
- /** 
-  * Each cell on the board will have one of these three things in it.
-  */
+/** 
+ * Each cell on the board will have one of these three things in it.
+ */
 type CellContents = "X" | "O" | undefined;
 
 /**
@@ -432,8 +557,6 @@ const canvas = getById("canvas", HTMLCanvasElement);
  */
 const canvasHolder = getById("canvasHolder", HTMLDivElement);
 
-const scene = new THREE.Scene();
-
 /**
  * A standard camera.
  *
@@ -472,23 +595,6 @@ renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
 
 //const ambientLight = new THREE.AmbientLight(0xffffff);
 //scene.add(pointLight, ambientLight);
-
-/**
- * The largest position we care about in the 3d coordinates.
- * 0 is the center of the box.
- */
-const boxMax = 14;
-
-/**
- * The smallest position we care about in the 3d coordinates.
- * 0 is the center of the box.
- */
-const boxMin = -boxMax;
-
-/**
- * The size of the box where the ball is bouncing, in 3d coordinates.
- */
-const boxSize = boxMax - boxMin;
 
 //const lightHelper = new THREE.PointLightHelper(pointLight);
 
@@ -701,40 +807,7 @@ type WallInfo = {
   init(group: THREE.Group): void;
 };
 
-class Wall {
-  /**
-   * Width and height of the canvas.
-   * The number is arbitrary, but a higher number will have more precision and a higher cost.
-   * The canvas will be projected onto a surface that is not a square, so I don't know that there is any ideal value here.
-   */
-  static readonly canvasSize = 600;
-
-  static readonly margin = this.canvasSize / 20;
-
-  /**
-   * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
-   * @param x The x coordinate that comes from WallInfo.flatten().x
-   * @returns The corresponding x coordinate on the canvas.
-   */
-  protected static readonly xToCanvas = makeLinear(
-    boxMin,
-    0,
-    boxMax,
-    this.canvasSize
-  );
-
-  /**
-   * Converts from the output of WallInfo.flatten() to a value suitable for the canvas.
-   * @param y The y coordinate that comes from WallInfo.flatten().y
-   * @returns The corresponding x coordinate on the canvas.
-   */
-  protected static readonly yToCanvas = makeLinear(
-    boxMin,
-    this.canvasSize,
-    boxMax,
-    0
-  );
-
+class SolidWall extends Wall {
   /**
    * This stores the position and rotation of the wall.
    *
@@ -747,36 +820,21 @@ class Wall {
    */
   #group = new THREE.Group();
 
-  /**
-   * Draw on this at any time.
-   * (Ideally but not necessarily in the animationFrame callback.)
-   *
-   * Set `this.#texture.needsUpdate = true;` at any time to copy from the canvas to the 3d object.
-   * The copy will probably happen in the next animationFrame callback.
-   *
-   * Each wall gets its own canvas because the update isn't done immediately.
-   * The canvas holds the image until the renderer is ready for it.
-   */
-  #canvas = document.createElement("canvas");
-
-  #roughCanvas = rough.canvas(this.#canvas);
-  #texture = new THREE.CanvasTexture(this.#canvas);
   #plane = new THREE.Mesh(
     new THREE.PlaneBufferGeometry(boxSize, boxSize, 50, 50),
     new THREE.MeshPhongMaterial({
-      map: this.#texture,
-      //transparent:true
-      //flatShading: true
+      map: this.texture
     })
   );
   #bumpEffect = new BumpEffect(this.#plane.material);
   #ticTacToe: TicTacToe;
   private constructor(private readonly info: WallInfo) {
-    this.#ticTacToe = new TicTacToe(this.#roughCanvas, this.info);
+    super()
+    this.#ticTacToe = new TicTacToe(this.roughCanvas, this.info);
     info.init(this.#group);
     scene.add(this.#group);
-    this.#canvas.width = Wall.canvasSize;
-    this.#canvas.height = Wall.canvasSize;
+    this.canvas.width = Wall.canvasSize;
+    this.canvas.height = Wall.canvasSize;
     this.makeWall();
     this.#group.add(this.#plane);
     this.#plane.castShadow = true;
@@ -799,7 +857,7 @@ class Wall {
     //this.makeWall();
 
     const drawCircle = () => {
-      this.#roughCanvas.circle(x, y, Wall.canvasSize / 5, {
+      this.roughCanvas.circle(x, y, Wall.canvasSize / 5, {
         stroke: this.info.strokeColor,
         strokeWidth: 10,
         roughness: 3,
@@ -815,7 +873,7 @@ class Wall {
         const offset = polarToRectangular(radius, initialAngle + i * nextAngle);
         points.push([x + offset.x, y + offset.y]);
       }
-      this.#roughCanvas.polygon(points, {
+      this.roughCanvas.polygon(points, {
         stroke: this.info.strokeColor,
         strokeWidth: 5 + Math.random() * 5,
         roughness: 2 * Math.random() * 2,
@@ -846,15 +904,15 @@ class Wall {
       this.#bumpEffect.start(time, x, y);
     }
 
-    this.#texture.needsUpdate = true;
+    this.texture.needsUpdate = true;
   }
 
   protected makeWall() {
-    const context = this.#canvas.getContext("2d")!;
+    const context = this.canvas.getContext("2d")!;
     context.fillStyle = this.info.fillColor;
     const margin = Wall.margin;
-    const width = this.#canvas.width;
-    const height = this.#canvas.height;
+    const width = this.canvas.width;
+    const height = this.canvas.height;
     context.fillRect(0, 0, width, height);
 
     const options: Options = {
@@ -863,7 +921,7 @@ class Wall {
       roughness: 3,
       bowing: 3,
     };
-    const roughCanvas = this.#roughCanvas;
+    const roughCanvas = this.roughCanvas;
     // TODO cache the Drawable result.
     // By default, we want to redraw the line in exactly the same place each time.
     roughCanvas.line(margin, height / 3, width - margin, height / 3, options);
@@ -883,10 +941,10 @@ class Wall {
       options
     );
 
-    this.#texture.needsUpdate = true;
+    this.texture.needsUpdate = true;
   }
 
-  static readonly rear = new Wall({
+  static readonly rear = new this({
     fillColor: "hsl(0, 100%, 45%)",//"#ff0000",
     strokeColor: "hsl(0, 100%, 83%)",//"#ff8080",
     flatten(input) {
@@ -897,7 +955,7 @@ class Wall {
     },
   });
 
-  static readonly left = new Wall({
+  static readonly left = new this({
     fillColor: "hsl(120, 100%, 45%)",//"#00ff00",
     strokeColor: "hsl(120, 100%, 83%)",//"#c0ffc0",
     flatten(input) {
@@ -909,7 +967,7 @@ class Wall {
     },
   });
 
-  static readonly right = new Wall({
+  static readonly right = new this({
     fillColor: "hsl(240, 100%, 45%)",//"#0000ff",
     strokeColor: "hsl(240, 100%, 83%)",//"#c0c0ff",
     flatten(input) {
@@ -921,7 +979,7 @@ class Wall {
     },
   });
 
-  static readonly top = new Wall({
+  static readonly top = new this({
     fillColor: "hsl(60, 100%, 45%)", //This was "#ffff00" / "hsl(60, 100%, 50%)", but that was too bright to see well.
     strokeColor: "hsl(60, 100%, 83%)", //"#ffffc0",
     flatten(input) {
@@ -933,7 +991,7 @@ class Wall {
     },
   });
 
-  static readonly bottom = new Wall({
+  static readonly bottom = new this({
     fillColor: "hsl(180, 100%, 45%)",//"#00ffff",
     strokeColor: "hsl(180, 100%, 83%)",//"#c0ffff",
     flatten(input) {
@@ -945,31 +1003,36 @@ class Wall {
     },
   });
 
-  static readonly all: readonly Wall[] = [this.top, this.bottom, this.left, this.right, this.rear];
-
-  static find(dimension: "x" | "y" | "z", position: number): Wall | undefined {
-    if (position < 0) {
-      if (dimension == "x") {
-        return this.left;
-      } else if (dimension == "y") {
-        return this.bottom;
-      } else if (dimension == "z") {
-        return this.rear;
-      }
-    } else {
-      if (dimension == "x") {
-        return this.right;
-      } else if (dimension == "y") {
-        return this.top;
-      }
-    }
-    return;
-  }
 
   doAnimationFrame(time: DOMHighResTimeStamp) {
     this.#bumpEffect.doAnimationFrame(time);
   }
 }
+
+const walls = {
+  all: [SolidWall.top, SolidWall.bottom, SolidWall.left, SolidWall.right, SolidWall.rear, FrontWall.instance] as readonly Wall[],
+  find(dimension: "x" | "y" | "z", position: number): Wall {
+    if (position < 0) {
+      if (dimension == "x") {
+        return SolidWall.left;
+      } else if (dimension == "y") {
+        return SolidWall.bottom;
+      } else {
+        // dimension == "z"
+        return SolidWall.rear;
+      }
+    } else {
+      if (dimension == "x") {
+        return SolidWall.right;
+      } else if (dimension == "y") {
+        return SolidWall.top;
+      } else {
+        // dimension == "z"
+        return FrontWall.instance;
+      }
+    }
+  }
+} as const;
 
 const ballRadius = 1;
 
@@ -1038,12 +1101,12 @@ function updateBall(time: DOMHighResTimeStamp) {
         ballVelocity[dimension] = Math.abs(ballVelocity[dimension]);
         //drawOnWall(dimension, "min");  TODO move this into the Wall class.
         // Let Wall pick which special effects to use and when.
-        Wall.find(dimension, ballMin)?.highlightPoint(ball.position, time);
+        walls.find(dimension, ballMin).highlightPoint(ball.position, time);
       } else if (newValue > ballMax) {
         newValue = ballMax;
         ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
         //drawOnWall(dimension, "max");
-        Wall.find(dimension, ballMax)?.highlightPoint(ball.position, time);
+        walls.find(dimension, ballMax).highlightPoint(ball.position, time);
       }
       ball.position[dimension] = newValue;
     }
@@ -1152,7 +1215,7 @@ function animate(time: DOMHighResTimeStamp) {
   //  toUpdate.update(time);
   //}
 
-  Wall.all.forEach(wall => wall.doAnimationFrame(time));
+  walls.all.forEach(wall => wall.doAnimationFrame(time));
 
   renderer.render(scene, camera);
 }

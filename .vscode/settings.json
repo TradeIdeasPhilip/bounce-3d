@@ -7,7 +7,9 @@
         "parsererror",
         "Phong",
         "roughjs",
-        "vite",
+        "vite"
     ],
-    "cSpell.ignorePaths" : ["batman-fight-words.ts"]
+    "cSpell.ignorePaths": [
+        "batman-fight-words.ts"
+    ]
 }

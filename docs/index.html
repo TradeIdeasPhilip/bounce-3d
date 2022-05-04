@@ -6,7 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.e3b9682b.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bounce 3D</title>
-  <script type="module" crossorigin src="./assets/index.055ecec7.js"></script>
+  <script type="module" crossorigin src="./assets/index.69604009.js"></script>
   <link rel="stylesheet" href="./assets/index.57ef2af3.css">
 </head>
 
@@ -14,11 +14,13 @@
 
   <!-- Eventually these will be drawn on a canvas then copied to the 3d world.  TODO  -->
   <img src="./assets/big.38fcb209.png" id="bulletBig"
-    style="position: absolute; width: 50px; z-index: 5; top: 1em; left: 5em;">
-  <img src="./assets/small.84e3a46b.png" id="bulletSmall"
-    style="position: absolute; width: 100px; z-index: 5; top: 3em; left: 10em;">
-  <img src="./assets/glass.73ba3ffc.png" id="bulletGlass"
-    style="position: absolute; width: 150px; z-index: 5; top: 9em; left: 15em;">
+    style="position: absolute; width: 100px; z-index: 5; top: 1em; left: 5em;">
+
+  <!-- Mostly this is used by the JavaScript code.  It gets copied to
+       a canvas.  However it is convenient to put it here so I can try
+       things in Chrome's debugger. -->
+  <img src="./assets/glass.6528b717.png" id="bulletGlass"
+    style="display: none; position: absolute; width: 250px; z-index: 5; top: 9em; left: 15em;">
 
   <div id="canvasHolder">
     <div id="canvasCenterEr">
