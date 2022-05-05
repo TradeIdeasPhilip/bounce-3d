@@ -17,13 +17,17 @@ import gentilisRegular from "three/examples/fonts/gentilis_regular.typeface.json
 import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?url";
 import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
-import { getById } from "./lib/client-misc";
+import { getById, getHashInfo } from "./lib/client-misc";
 import { countMap, FIGURE_SPACE, makeLinear, pick, polarToRectangular } from "./lib/misc";
 
 // Source:  https://methodshop.com/batman-fight-words/
 import batmanFightWords from "./batman-fight-words.json";
 import { Point } from "roughjs/bin/geometry";
 import { RoughCanvas } from "roughjs/bin/canvas";
+
+const urlHashInfo = getHashInfo();
+const showShadows = urlHashInfo.get("shadows") === "1";
+console.log(urlHashInfo);
 
 // Coordinates in the 3d world:
 // x=0 is the center of the viewing area / box.
@@ -123,7 +127,16 @@ class FrontWall extends Wall {
     })
   );
 
+  /**
+   * This describes the progress of the current animation.
+   * This is undefined if no animation is currently active.
+   * Otherwise call this #program.doAnimationFrame() once per animation frame,
+   * and call #program.end() to clean up when the program is done.
+   */
+  #program: { doAnimationFrame: (time: DOMHighResTimeStamp) => void, end: () => void } | undefined;
+
   highlightPoint(point: THREE.Vector3, time: number): void {
+    this.#program?.end();
     const centerX = Wall.xToCanvas(point.x);
     const centerY = Wall.yToCanvas(point.y);
     const width = FrontWall.randomToGlass(Math.random());
@@ -137,21 +150,33 @@ class FrontWall extends Wall {
     }
     const destinationX = centerX - width / 2;
     const destinationY = centerY - height / 2;
-    console.log({ point, centerX, centerY, sourceSize, width, height, destinationX, destinationY, });
+    //console.log({ point, centerX, centerY, sourceSize, width, height, destinationX, destinationY, });
     context.drawImage(FrontWall.img, 0, 0, sourceSize, sourceSize, destinationX, destinationY, width, height);
-    ///context.fillStyle="blue";
-    //context.fillRect(0, 0, 100, 100)
-    //context.drawImage(FrontWall.img, 0, 0);
+
+    /*
+    context.strokeStyle="white";
+    context.beginPath();
+    context.moveTo(210, 210);
+    context.lineTo(310, 310);
+    context.moveTo(310, 210);
+    context.lineTo(210, 310);
+    context.lineCap="round";
+    context.lineWidth = 10;
+    context.stroke();
+    */
     this.texture.needsUpdate = true;
   }
   doAnimationFrame(time: DOMHighResTimeStamp) {
     // TODO Fade away over time. 
-    // Material.oopacity would be a good place to start.
+    // Material.opacity would be a good place to start.
   }
   private constructor() {
     super();
     this.canvas.width = Wall.canvasSize;
     this.canvas.height = Wall.canvasSize;
+
+    // I could not get this plane to cast a shadow.  It would be nice to fix that.
+    //this.#plane.castShadow = true;
 
     this.#plane.position.z = boxMax;
     scene.add(this.#plane);
@@ -587,16 +612,13 @@ const renderer = new THREE.WebGLRenderer({
 // https://threejs.org/docs/#api/en/lights/SpotLight
 // https://threejs.org/docs/#api/en/lights/shadows/SpotLightShadow
 // https://r105.threejsfundamentals.org/threejs/lessons/threejs-shadows.html
-//renderer.shadowMap.enabled = true;
-//renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+if (showShadows) {
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+}
 
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
-
-//const ambientLight = new THREE.AmbientLight(0xffffff);
-//scene.add(pointLight, ambientLight);
-
-//const lightHelper = new THREE.PointLightHelper(pointLight);
 
 const dimensions = ["x", "y", "z"] as const;
 
@@ -629,17 +651,14 @@ const materialsBack = [
 // This should be tweaked with the lights and the shadows.
 scene.fog = new THREE.Fog(0x000000, 250, 1400);
 
-//const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
-//dirLight.position.set(0, 0, 1).normalize();
-//dirLight.castShadow = true;
-//scene.add(dirLight);
+const useSpotlights = urlHashInfo.get("spotlight") === "1";
 
-const rightLight = new THREE.SpotLight(0xffffff, 2 / 3, 0, Math.PI / 2);
+const rightLight = useSpotlights? (new THREE.SpotLight(0xffffff, 2 / 3, 0, Math.PI / 2)):(new THREE.PointLight(0xffffff, 2/3));
 rightLight.position.set(boxMax / 2, boxMax / 4, boxMax * 1.5);
 rightLight.castShadow = true;
 rightLight.shadow.radius = 8;  // Add blur.  The default is 1.  That's totally black if this is the only light.
 scene.add(rightLight);
-const leftLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2);
+const leftLight = useSpotlights?(new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2)):(new THREE.PointLight(0xffffff, 1));
 leftLight.position.set(-boxMax / 2, boxMax / 2, boxMax * 1.5);
 leftLight.castShadow = true;
 leftLight.shadow.radius = 8;  // https://stackoverflow.com/a/53522410/971955

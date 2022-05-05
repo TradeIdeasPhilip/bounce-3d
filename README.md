@@ -17,7 +17,9 @@ I'd like to play with the lights and shadows and reflections more.
 I want to make the shadows work!
 
 ## See it Running
-* [Run it yourself](https://tradeideasphilip.github.io/bounce-3d/)
+* Run it yourself
+  * [Without shadows](https://tradeideasphilip.github.io/bounce-3d/) (More efficient)
+  * [With shadows](https://tradeideasphilip.github.io/bounce-3d/#shadows=1) (Better looking)
 * [Watch on YouTube](https://youtu.be/OEnWbJ4_FKY) (_very_ old)
 * [Watch a version with shadows](https://youtu.be/eXZiy4KwqwY)
 
