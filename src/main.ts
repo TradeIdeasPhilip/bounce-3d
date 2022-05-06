@@ -18,7 +18,7 @@ import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json?u
 import helvetikerRegular from "three/examples/fonts/helvetiker_regular.typeface.json?url";
 
 import { getById, getHashInfo } from "./lib/client-misc";
-import { countMap, FIGURE_SPACE, makeLinear, pick, polarToRectangular } from "./lib/misc";
+import { countMap, FIGURE_SPACE, makeBoundedLinear, makeLinear, pick, polarToRectangular } from "./lib/misc";
 
 // Source:  https://methodshop.com/batman-fight-words/
 import batmanFightWords from "./batman-fight-words.json";
@@ -242,21 +242,22 @@ class FrontWall extends Wall {
      * Before this time, draw just part of the image.
      */
     const drawEndTime = startTime + 300;
-    // TODO This growing effect is nice but not perfect.  I tried making
-    // it faster, but then it was hard to see.  On closer inspection, the
-    // end part should probably go faster.
-    // To try:  Draw the innermost part immediately.  Wait 100ms.  Then
-    // grow linearly between 100ms and 300ms.
+    /**
+     * Draw a small crack immediately.
+     * The crack stays small until this time.
+     * Then it starts growing
+     */
+    const growStartTime = startTime + 200;
     /**
      * How much of the cracked glass image to display at the given time.
      * @param time The time of the animation frame.
      */
-    const radiusX = makeLinear(startTime, width / 2 * crackInfo.innerR, drawEndTime, width / 2 * crackInfo.outerR);
+    const radiusX = makeBoundedLinear(growStartTime, width / 2 * crackInfo.innerR, drawEndTime, width / 2 * crackInfo.outerR);
     /**
      * How much of the cracked glass image to display at the given time.
      * @param time The time of the animation frame.
      */
-    const radiusY = makeLinear(startTime, height / 2 * crackInfo.innerR, drawEndTime, height / 2 * crackInfo.outerR);
+    const radiusY = makeBoundedLinear(growStartTime, height / 2 * crackInfo.innerR, drawEndTime, height / 2 * crackInfo.outerR);
     /**
      * Make the image start fading at this time.
      */
@@ -1101,7 +1102,7 @@ class SolidWall extends Wall {
 
   static readonly rear = new this({
     fillColor: "hsl(0, 100%, 25%)",//"#ff0000",
-    strokeColor: "hsl(0, 100%, 63%)",//"#ff8080",
+    strokeColor: "hsl(0, 100%, 66%)",//"#ff8080",
     flatten(input) {
       return new THREE.Vector2(input.x, input.y);
     },
