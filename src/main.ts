@@ -27,7 +27,7 @@ import { RoughCanvas } from "roughjs/bin/canvas";
 
 const urlHashInfo = getHashInfo();
 const showShadows = urlHashInfo.get("shadows") === "1";
-console.log(urlHashInfo);
+//console.log(urlHashInfo);
 
 // Coordinates in the 3d world:
 // x=0 is the center of the viewing area / box.
@@ -110,6 +110,14 @@ abstract class Wall {
   abstract doAnimationFrame(time: DOMHighResTimeStamp): void;
 }
 
+/**
+ * This sets the clipping region for the cracked glass animation.
+ * We start by setting the radius to innerR * half the size of the image.
+ * Over time we grow to outerR * half the size of the image.
+ * AFter that part of the animation ends, we draw the entire image, with no clipping.
+ */
+const crackInfo = { innerR: 0.1, outerR: 0.5 };
+
 class FrontWall extends Wall {
   private static readonly img = getById("bulletGlass", HTMLImageElement);
   private static readonly MAX_GLASS_SIZE = 250 / 704 * this.canvasSize;
@@ -135,14 +143,13 @@ class FrontWall extends Wall {
    */
   #program: { doAnimationFrame: (time: DOMHighResTimeStamp) => void, end: () => void } | undefined;
 
-  highlightPoint(point: THREE.Vector3, time: number): void {
+  highlightPoint(point: THREE.Vector3, startTime: number): void {
     this.#program?.end();
     const centerX = Wall.xToCanvas(point.x);
     const centerY = Wall.yToCanvas(point.y);
     const width = FrontWall.randomToGlass(Math.random());
     const height = Math.min(FrontWall.MAX_GLASS_SIZE, Math.max(FrontWall.MIN_GLASS_SIZE, width * (Math.random() * 0.2 + 0.9)));
     const context = this.canvas.getContext("2d")!;
-    context.clearRect(0, 0, Wall.canvasSize, Wall.canvasSize);
     const sourceSize = FrontWall.img.naturalHeight;
     if (sourceSize <= 0) {
       // Image not loaded
@@ -150,25 +157,87 @@ class FrontWall extends Wall {
     }
     const destinationX = centerX - width / 2;
     const destinationY = centerY - height / 2;
-    //console.log({ point, centerX, centerY, sourceSize, width, height, destinationX, destinationY, });
-    context.drawImage(FrontWall.img, 0, 0, sourceSize, sourceSize, destinationX, destinationY, width, height);
-
-    /*
-    context.strokeStyle="white";
-    context.beginPath();
-    context.moveTo(210, 210);
-    context.lineTo(310, 310);
-    context.moveTo(310, 210);
-    context.lineTo(210, 310);
-    context.lineCap="round";
-    context.lineWidth = 10;
-    context.stroke();
-    */
-    this.texture.needsUpdate = true;
+    /**
+     * This is an optimization.  There is certain work we do once at the beginning.
+     * We could do the work each time, but this is more efficient.
+     */
+    let hasBeenInitialized = false;
+    /**
+     * This is an optimization.  We only update the canvas and the material while
+     * the first part of the animation is going.  We could redraw the cracked glass
+     * ever=y frame but this is more efficient.  Most animation frames we do nothing
+     * or we only change the opacity of the entire #plane.
+     */
+    let drawingFinished = false;
+    /**
+     * Draw the complete cracked glass image at this time, and leave it up.
+     * Before this time, draw just part of the image.
+     */
+    const drawEndTime = startTime + 300;
+    /**
+     * How much of the cracked glass image to display at the given time.
+     * @param time The time of the animation frame.
+     */
+    const radiusX = makeLinear(startTime, width / 2 * crackInfo.innerR, drawEndTime, width / 2 * crackInfo.outerR);
+    /**
+     * How much of the cracked glass image to display at the given time.
+     * @param time The time of the animation frame.
+     */
+    const radiusY = makeLinear(startTime, height / 2 * crackInfo.innerR, drawEndTime, height / 2 * crackInfo.outerR);
+    /**
+     * Make the image start fading at this time.
+     */
+    const fadeStartTime = startTime + 1500;
+    /**
+     * The image will be completely faded at this time.
+     * Do one final cleanup then finish the animation.
+     */
+    const fadeEndTime = startTime + 3000;
+    /**
+     * Use this to say how much the image should be faded.
+     * @ time The time of the animation.
+     */
+    const opacity = makeLinear(fadeStartTime, 1, fadeEndTime, 0);
+    const doAnimationFrame = (time: DOMHighResTimeStamp) => {
+      if (time > fadeEndTime) {
+        end();
+        //console.log(`ending at ${time}, ${time - fadeEndTime} microsecond late`);
+        return;
+      }
+      if (!hasBeenInitialized) {
+        //console.log(`starting at ${time}, ${time - startTime} microsecond late`);
+        this.#plane.material.opacity = 1;
+        hasBeenInitialized = true;
+      }
+      if (!drawingFinished) {
+        this.texture.needsUpdate = true;
+        context.clearRect(0, 0, Wall.canvasSize, Wall.canvasSize);
+        context.save();
+        if (time >= drawEndTime) {
+          //console.log(`drawing phase ending at ${time}, ${time - drawEndTime} microsecond late`);
+          drawingFinished = true;
+        } else {
+          context.beginPath();
+          context.ellipse(centerX, centerY, radiusX(time), radiusY(time), 0, 0, Math.PI * 2);
+          context.clip();
+        }
+        context.drawImage(FrontWall.img, 0, 0, sourceSize, sourceSize, destinationX, destinationY, width, height);
+        context.restore();
+      }
+      if (time >= fadeStartTime) {
+        this.#plane.material.opacity = opacity(time);
+      }
+    };
+    const end = () => {
+      this.#plane.material.opacity = 0;
+      this.#program = undefined;
+    };
+    this.#program = {
+      doAnimationFrame, end
+    };
   }
   doAnimationFrame(time: DOMHighResTimeStamp) {
-    // TODO Fade away over time. 
-    // Material.opacity would be a good place to start.
+    this.#program?.doAnimationFrame(time);
   }
   private constructor() {
     super();
@@ -653,12 +722,12 @@ scene.fog = new THREE.Fog(0x000000, 250, 1400);
 
 const useSpotlights = urlHashInfo.get("spotlight") === "1";
 
-const rightLight = useSpotlights? (new THREE.SpotLight(0xffffff, 2 / 3, 0, Math.PI / 2)):(new THREE.PointLight(0xffffff, 2/3));
+const rightLight = useSpotlights ? (new THREE.SpotLight(0xffffff, 2 / 3, 0, Math.PI / 2)) : (new THREE.PointLight(0xffffff, 2 / 3));
 rightLight.position.set(boxMax / 2, boxMax / 4, boxMax * 1.5);
 rightLight.castShadow = true;
 rightLight.shadow.radius = 8;  // Add blur.  The default is 1.  That's totally black if this is the only light.
 scene.add(rightLight);
-const leftLight = useSpotlights?(new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2)):(new THREE.PointLight(0xffffff, 1));
+const leftLight = useSpotlights ? (new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2)) : (new THREE.PointLight(0xffffff, 1));
 leftLight.position.set(-boxMax / 2, boxMax / 2, boxMax * 1.5);
 leftLight.castShadow = true;
 leftLight.shadow.radius = 8;  // https://stackoverflow.com/a/53522410/971955

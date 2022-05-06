@@ -34,6 +34,13 @@ I want to make the shadows work!
 
 For more info:  https://vitejs.dev/guide/#command-line-interface.
 
+## Three.js Resources for Beginners
+
+Google can answer a lot of specific questions, but these will give you more a of guided tour.
+I've found these two sources quite helpful.
+* [Three.js Fundamentals](https://r105.threejsfundamentals.org/threejs/lessons/) has editable code mixed in with the lessons.
+* [Three.js Tutorials for Beginners](https://www.youtube.com/playlist?list=PLRL3Z3lpLmH0aqLDbfh0ZmnDkpXPDnTau) on YouTube.
+
 ## Soundtrack
 [My balls are always bouncing.](https://www.youtube.com/watch?v=xPlqLHcphyw)
 
