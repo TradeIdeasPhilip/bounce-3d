@@ -165,10 +165,21 @@ class FrontWall extends Wall {
     this.#program?.end();
     const centerX = Wall.xToCanvas(point.x);
     const centerY = Wall.yToCanvas(point.y);
+    const color = "white";
     const random = Math.random();
-    if (random < 0.3) {
+    if (random < 0.5) {
       this.startSimpleFade(time);
-      this.drawStar(centerX, centerY, "white");
+      const shapeRandom = Math.random();
+      if (shapeRandom < 0.3333) {
+        this.drawStar(centerX, centerY, color);
+      } else {
+        const rowAndColumn = TicTacToe.findCell(centerX, centerY);
+        if (shapeRandom < 0.666667) {
+          TicTacToe.drawX(this.roughCanvas, color, rowAndColumn);
+        } else {
+          TicTacToe.drawO(this.roughCanvas, color, rowAndColumn);
+        }
+      }
     } else {
       this.startCrackedGlassEffect(time, centerX, centerY);
     }
@@ -177,7 +188,6 @@ class FrontWall extends Wall {
     this.#plane.material.opacity = 1;
     this.context.clearRect(0, 0, Wall.canvasSize, Wall.canvasSize);
     this.texture.needsUpdate = true;
-    console.log("simple fade -- TODO schedule the fade!");
     const fadeStartTime = startTime + 1500;
     /**
      * The image will be completely faded at this time.
@@ -232,6 +242,11 @@ class FrontWall extends Wall {
      * Before this time, draw just part of the image.
      */
     const drawEndTime = startTime + 300;
+    // TODO This growing effect is nice but not perfect.  I tried making
+    // it faster, but then it was hard to see.  On closer inspection, the
+    // end part should probably go faster.
+    // To try:  Draw the innermost part immediately.  Wait 100ms.  Then
+    // grow linearly between 100ms and 300ms.
     /**
      * How much of the cracked glass image to display at the given time.
      * @param time The time of the animation frame.
@@ -553,35 +568,10 @@ class TicTacToe {
       this.#nextMove = (thisMove == "X") ? "O" : "X";
 
       // Draw the current move.
-      const margin = Wall.margin;
-      const radius = Wall.canvasSize / 6 - margin;
-      const center = {
-        x: TicTacToe.cellCenter(rowAndColumn.column),
-        y: TicTacToe.cellCenter(rowAndColumn.row)
-      };
       if (thisMove == "O") {
-        this.roughCanvas.circle(center.x, center.y, radius * 2, {
-          stroke: this.wallInfo.strokeColor,
-          strokeWidth: 7 + Math.random() * 2,
-          roughness: 3,
-          disableMultiStroke: true
-        });
-        //console.log("circle", {radius, margin, center});
+        TicTacToe.drawO(this.roughCanvas, this.wallInfo.strokeColor, rowAndColumn);
       } else {
-        const left = center.x - radius;
-        const right = center.x + radius;
-        const top = center.y - radius;
-        const bottom = center.y + radius;
-        const options: Options = {
-          stroke: this.wallInfo.strokeColor,
-          strokeWidth: 7 + Math.random() * 2,
-          roughness: 4,
-          bowing: 4,
-          disableMultiStroke: true
-        };
-        this.roughCanvas.line(left, top, right, bottom, options);
-        this.roughCanvas.line(left, bottom, right, top, options);
-        //console.log("square", {radius, margin, center, left, top, right, bottom});
+        TicTacToe.drawX(this.roughCanvas, this.wallInfo.strokeColor, rowAndColumn);
       }
 
       // Check for end of game because there are no more moves to make.
@@ -636,7 +626,7 @@ class TicTacToe {
        * There is always empty space separating the edge of the plan from the board, the X's and the O's.
        * The ends of this new line segment will be in that space.
        */
-      const offset = margin / 2;
+      const offset = Wall.margin / 2;
       for (let row = 0; row < 3; row++) {
         const positions = countMap(3, column => { return { row, column }; });
         if (isWinner(positions)) {
@@ -691,6 +681,42 @@ class TicTacToe {
       return Math.floor((input * 3 / Wall.canvasSize));
     }
     return { row: oneDimension(y), column: oneDimension(x) };
+  }
+
+  private static readonly radius = Wall.canvasSize / 6 - Wall.margin;
+
+  static drawX(roughCanvas : RoughCanvas, color : string, rowAndColumn : RowAndColumn) {
+    const center = {
+      x: this.cellCenter(rowAndColumn.column),
+      y: this.cellCenter(rowAndColumn.row)
+    };
+    const radius = this.radius;
+    const left = center.x - radius;
+    const right = center.x + radius;
+    const top = center.y - radius;
+    const bottom = center.y + radius;
+    const options: Options = {
+      stroke: color,
+      strokeWidth: 7 + Math.random() * 2,
+      roughness: 4,
+      bowing: 4,
+      disableMultiStroke: true
+    };
+    roughCanvas.line(left, top, right, bottom, options);
+    roughCanvas.line(left, bottom, right, top, options);
+  }
+
+  static drawO(roughCanvas : RoughCanvas, color : string, rowAndColumn : RowAndColumn) {
+    const center = {
+      x: this.cellCenter(rowAndColumn.column),
+      y: this.cellCenter(rowAndColumn.row)
+    };
+    roughCanvas.circle(center.x, center.y, this.radius * 2, {
+      stroke: color,
+      strokeWidth: 7 + Math.random() * 2,
+      roughness: 3,
+      disableMultiStroke: true
+    });
   }
 }
 
