@@ -102,9 +102,27 @@ abstract class Wall {
    * The canvas holds the image until the renderer is ready for it.
    */
   protected readonly canvas = document.createElement("canvas");
+  protected readonly context = this.canvas.getContext("2d")!;
 
   protected readonly roughCanvas = rough.canvas(this.canvas);
   protected readonly texture = new THREE.CanvasTexture(this.canvas);
+
+  protected drawStar = (x : number, y: number, color : string) => {
+    const radius = (Wall.canvasSize / 14) * (Math.random() + 1);
+    const initialAngle = Math.random() * 2 * Math.PI;
+    const nextAngle = ((2 * Math.PI) / 5) * 2;
+    const points: Point[] = [];
+    for (let i = 0; i < 5; i++) {
+      const offset = polarToRectangular(radius, initialAngle + i * nextAngle);
+      points.push([x + offset.x, y + offset.y]);
+    }
+    this.roughCanvas.polygon(points, {
+      stroke: color,
+      strokeWidth: 5 + Math.random() * 5,
+      roughness: 2 * Math.random() * 2,
+      disableMultiStroke: Math.random() > 0.5,
+    });
+  };
 
   abstract highlightPoint(point: THREE.Vector3, time: number): void;
   abstract doAnimationFrame(time: DOMHighResTimeStamp): void;
@@ -143,13 +161,53 @@ class FrontWall extends Wall {
    */
   #program: { doAnimationFrame: (time: DOMHighResTimeStamp) => void, end: () => void } | undefined;
 
-  highlightPoint(point: THREE.Vector3, startTime: number): void {
+  highlightPoint(point: THREE.Vector3, time: number): void {
     this.#program?.end();
     const centerX = Wall.xToCanvas(point.x);
     const centerY = Wall.yToCanvas(point.y);
+    const random = Math.random();
+    if (random < 0.3) {
+      this.startSimpleFade(time);
+      this.drawStar(centerX, centerY, "white");
+    } else {
+      this.startCrackedGlassEffect(time, centerX, centerY);
+    }
+  }
+  startSimpleFade(startTime:number) {
+    this.#plane.material.opacity = 1;
+    this.context.clearRect(0, 0, Wall.canvasSize, Wall.canvasSize);
+    this.texture.needsUpdate = true;
+    console.log("simple fade -- TODO schedule the fade!");
+    const fadeStartTime = startTime + 1500;
+    /**
+     * The image will be completely faded at this time.
+     * Do one final cleanup then finish the animation.
+     */
+    const fadeEndTime = startTime + 3000;
+    /**
+     * Use this to say how much the image should be faded.
+     * @param time The time of the animation.
+     */
+    const opacity = makeLinear(fadeStartTime, 1, fadeEndTime, 0);
+    const doAnimationFrame = (time: DOMHighResTimeStamp) => {
+      if (time > fadeEndTime) {
+        end();
+      } else if (time >= fadeStartTime) {
+        this.#plane.material.opacity = opacity(time);
+      }
+    }
+    const end = () => {
+      this.#plane.material.opacity = 0;
+      this.#program = undefined;
+    };
+    this.#program = {
+      doAnimationFrame, end
+    };
+  }
+  startCrackedGlassEffect(startTime:number, centerX: number, centerY : number) {
     const width = FrontWall.randomToGlass(Math.random());
     const height = Math.min(FrontWall.MAX_GLASS_SIZE, Math.max(FrontWall.MIN_GLASS_SIZE, width * (Math.random() * 0.2 + 0.9)));
-    const context = this.canvas.getContext("2d")!;
+    const context = this.context;
     const sourceSize = FrontWall.img.naturalHeight;
     if (sourceSize <= 0) {
       // Image not loaded
@@ -195,7 +253,7 @@ class FrontWall extends Wall {
     const fadeEndTime = startTime + 3000;
     /**
      * Use this to say how much the image should be faded.
-     * @ time The time of the animation.
+     * @param time The time of the animation.
      */
     const opacity = makeLinear(fadeStartTime, 1, fadeEndTime, 0);
     const doAnimationFrame = (time: DOMHighResTimeStamp) => {
@@ -952,22 +1010,6 @@ class SolidWall extends Wall {
       });
     };
 
-    const drawStar = () => {
-      const radius = (Wall.canvasSize / 14) * (Math.random() + 1);
-      const initialAngle = Math.random() * 2 * Math.PI;
-      const nextAngle = ((2 * Math.PI) / 5) * 2;
-      const points: Point[] = [];
-      for (let i = 0; i < 5; i++) {
-        const offset = polarToRectangular(radius, initialAngle + i * nextAngle);
-        points.push([x + offset.x, y + offset.y]);
-      }
-      this.roughCanvas.polygon(points, {
-        stroke: this.info.strokeColor,
-        strokeWidth: 5 + Math.random() * 5,
-        roughness: 2 * Math.random() * 2,
-        disableMultiStroke: Math.random() > 0.5,
-      });
-    };
     //drawStar();
 
     const canvasSize = Wall.canvasSize;
@@ -996,12 +1038,11 @@ class SolidWall extends Wall {
   }
 
   protected makeWall() {
-    const context = this.canvas.getContext("2d")!;
-    context.fillStyle = this.info.fillColor;
+    this.context.fillStyle = this.info.fillColor;
     const margin = Wall.margin;
     const width = this.canvas.width;
     const height = this.canvas.height;
-    context.fillRect(0, 0, width, height);
+    this.context.fillRect(0, 0, width, height);
 
     const options: Options = {
       stroke: this.info.strokeColor,
@@ -1033,8 +1074,8 @@ class SolidWall extends Wall {
   }
 
   static readonly rear = new this({
-    fillColor: "hsl(0, 100%, 45%)",//"#ff0000",
-    strokeColor: "hsl(0, 100%, 83%)",//"#ff8080",
+    fillColor: "hsl(0, 100%, 25%)",//"#ff0000",
+    strokeColor: "hsl(0, 100%, 63%)",//"#ff8080",
     flatten(input) {
       return new THREE.Vector2(input.x, input.y);
     },
