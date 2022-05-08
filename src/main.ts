@@ -132,7 +132,7 @@ abstract class Wall {
  * This sets the clipping region for the cracked glass animation.
  * We start by setting the radius to innerR * half the size of the image.
  * Over time we grow to outerR * half the size of the image.
- * AFter that part of the animation ends, we draw the entire image, with no clipping.
+ * After that part of the animation ends, we draw the entire image, with no clipping.
  */
 const crackInfo = { innerR: 0.1, outerR: 0.5 };
 
