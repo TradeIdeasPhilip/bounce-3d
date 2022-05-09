@@ -134,7 +134,7 @@ abstract class Wall {
  * Over time we grow to outerR * half the size of the image.
  * After that part of the animation ends, we draw the entire image, with no clipping.
  */
-const crackInfo = { innerR: 0.1, outerR: 0.5 };
+const crackInfo = { innerR: 0.2, outerR: 0.5 };
 
 class FrontWall extends Wall {
   private static readonly img = getById("bulletGlass", HTMLImageElement);
