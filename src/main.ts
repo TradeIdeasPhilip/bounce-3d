@@ -1,7 +1,7 @@
 import "./style.css";
 import * as THREE from "three";
 import { Font, FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
-import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js"
+import { TextGeometry, TextGeometryParameters } from "three/examples/jsm/geometries/TextGeometry.js"
 import rough from "roughjs";
 import { Options } from "roughjs/bin/core";
 
@@ -27,7 +27,6 @@ import { RoughCanvas } from "roughjs/bin/canvas";
 
 const urlHashInfo = getHashInfo();
 const showShadows = urlHashInfo.get("shadows") === "1";
-//console.log(urlHashInfo);
 
 // Coordinates in the 3d world:
 // x=0 is the center of the viewing area / box.
@@ -107,7 +106,7 @@ abstract class Wall {
   protected readonly roughCanvas = rough.canvas(this.canvas);
   protected readonly texture = new THREE.CanvasTexture(this.canvas);
 
-  protected drawStar = (x : number, y: number, color : string) => {
+  protected drawStar = (x: number, y: number, color: string) => {
     const radius = (Wall.canvasSize / 14) * (Math.random() + 1);
     const initialAngle = Math.random() * 2 * Math.PI;
     const nextAngle = ((2 * Math.PI) / 5) * 2;
@@ -184,7 +183,7 @@ class FrontWall extends Wall {
       this.startCrackedGlassEffect(time, centerX, centerY);
     }
   }
-  startSimpleFade(startTime:number) {
+  startSimpleFade(startTime: number) {
     this.#plane.material.opacity = 1;
     this.context.clearRect(0, 0, Wall.canvasSize, Wall.canvasSize);
     this.texture.needsUpdate = true;
@@ -214,7 +213,7 @@ class FrontWall extends Wall {
       doAnimationFrame, end
     };
   }
-  startCrackedGlassEffect(startTime:number, centerX: number, centerY : number) {
+  startCrackedGlassEffect(startTime: number, centerX: number, centerY: number) {
     const width = FrontWall.randomToGlass(Math.random());
     const height = Math.min(FrontWall.MAX_GLASS_SIZE, Math.max(FrontWall.MIN_GLASS_SIZE, width * (Math.random() * 0.2 + 0.9)));
     const context = this.context;
@@ -275,11 +274,9 @@ class FrontWall extends Wall {
     const doAnimationFrame = (time: DOMHighResTimeStamp) => {
       if (time > fadeEndTime) {
         end();
-        //console.log(`ending at ${time}, ${time - fadeEndTime} microsecond late`);
         return;
       }
       if (!hasBeenInitialized) {
-        //console.log(`starting at ${time}, ${time - startTime} microsecond late`);
         this.#plane.material.opacity = 1;
         hasBeenInitialized = true;
       }
@@ -288,7 +285,6 @@ class FrontWall extends Wall {
         context.clearRect(0, 0, Wall.canvasSize, Wall.canvasSize);
         context.save();
         if (time >= drawEndTime) {
-          //console.log(`drawing phase ending at ${time}, ${time - drawEndTime} microsecond late`);
           drawingFinished = true;
         } else {
           context.beginPath();
@@ -428,7 +424,6 @@ class BumpEffect {
   start(startTime: DOMHighResTimeStamp, x: number, y: number) {
     x *= BumpEffect.#size / Wall.canvasSize;
     y *= BumpEffect.#size / Wall.canvasSize;
-    //console.log({start: this, startTime, x, y, ballVelocity});
     this.end();
     const endTime = startTime + 1500;
     const maxDisplacement = 3;
@@ -631,7 +626,6 @@ class TicTacToe {
       for (let row = 0; row < 3; row++) {
         const positions = countMap(3, column => { return { row, column }; });
         if (isWinner(positions)) {
-          //console.log(`winner in row ${row}`);
           const y = TicTacToe.cellCenter(row);
           drawSuccess(offset, y, Wall.canvasSize - offset, y);
         }
@@ -639,7 +633,6 @@ class TicTacToe {
       for (let column = 0; column < 3; column++) {
         const positions = countMap(3, row => { return { row, column }; });
         if (isWinner(positions)) {
-          //console.log(`winner in column ${column}`);
           const x = TicTacToe.cellCenter(column);
           drawSuccess(x, offset, x, Wall.canvasSize - offset);
         }
@@ -647,22 +640,11 @@ class TicTacToe {
       const fromTopLeft = countMap(3, i => { return { row: i, column: i }; });
       if (isWinner(fromTopLeft)) {
         drawSuccess(offset, offset, Wall.canvasSize - offset, Wall.canvasSize - offset);
-        //console.log("Winner in diagonal from top left.");
       }
 
-      // Oops.  This was a bug:
-      // const fromTopRight = countMap(3, i => { return { row: i, column: 3 - i }; });
-      // console.log(fromTopRight);
-      // => [{"row":0,"column":3},{"row":1,"column":2},{"row":2,"column":1}]
-
-      // This is the corrected version:
       const fromTopRight = countMap(3, i => { return { row: i, column: 2 - i }; });
-      // console.log(JSON.stringify(fromTopRight));
-      // => [{"row":0,"column":2},{"row":1,"column":1},{"row":2,"column":0}]
-
       if (isWinner(fromTopRight)) {
         drawSuccess(offset, Wall.canvasSize - offset, Wall.canvasSize - offset, offset);
-        //console.log("Winner in diagonal from top right.");
       }
 
       return true;
@@ -686,7 +668,7 @@ class TicTacToe {
 
   private static readonly radius = Wall.canvasSize / 6 - Wall.margin;
 
-  static drawX(roughCanvas : RoughCanvas, color : string, rowAndColumn : RowAndColumn) {
+  static drawX(roughCanvas: RoughCanvas, color: string, rowAndColumn: RowAndColumn) {
     const center = {
       x: this.cellCenter(rowAndColumn.column),
       y: this.cellCenter(rowAndColumn.row)
@@ -707,7 +689,7 @@ class TicTacToe {
     roughCanvas.line(left, bottom, right, top, options);
   }
 
-  static drawO(roughCanvas : RoughCanvas, color : string, rowAndColumn : RowAndColumn) {
+  static drawO(roughCanvas: RoughCanvas, color: string, rowAndColumn: RowAndColumn) {
     const center = {
       x: this.cellCenter(rowAndColumn.column),
       y: this.cellCenter(rowAndColumn.row)
@@ -776,30 +758,6 @@ renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
 
 const dimensions = ["x", "y", "z"] as const;
 
-/**
- * Use this to draw the words on the side walls.
- *
- * White on the front, black on the sides.
- * These words sit just outside the wall and should look black and white.
- */
-const materials = [
-  new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
-  new THREE.MeshPhongMaterial({ color: 0x000000 }), // side
-];
-
-/**
- * Use this to draw the words on the rear wall.
- *
- * White everywhere.
- * These words just barely poke out from behind the wall.
- * The extruded part is almost entirely behind the wall, so the color will be a combination of white and the color of the wall.
- * The words themselves will be white.
- */
-const materialsBack = [
-  new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
-  new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
-];
-
 // I copied this from an example.
 // I think it has a small effect on the ball.
 // This should be tweaked with the lights and the shadows.
@@ -818,131 +776,204 @@ leftLight.castShadow = true;
 leftLight.shadow.radius = 8;  // https://stackoverflow.com/a/53522410/971955
 scene.add(leftLight);
 
-(window as any).phil = { rightLight, leftLight, scene, makeMarker };
-
-/**
- * Use these when displaying 3d extruded text.
- *
- * Note that these get loaded from the internet when the program starts.
- * So the list might be partially or completely empty, for a brief moment.
- */
-const fonts: Font[] = [];
-[
-  optimerBold,
-  optimerRegular,
-  //droidSansMonoRegular,
-  droidSansBold,
-  droidSansRegular,
-  droidSerifBold,
-  droidSerifRegular,
-  gentilisBold,
-  gentilisRegular,
-  helvetikerBold,
-  helvetikerRegular,
-].forEach((fontUrl) => {
-  new FontLoader().load(fontUrl, function (font) {
-    fonts.push(font);
+class FightWordEffect {
+  /**
+   * Note that these get loaded from the internet when the program starts.
+   * So the list might be partially or completely empty, for a brief moment.
+   */
+  static readonly #fonts: Font[] = [];
+  static #initializer = [
+    optimerBold,
+    optimerRegular,
+    //droidSansMonoRegular,
+    droidSansBold,
+    droidSansRegular,
+    droidSerifBold,
+    droidSerifRegular,
+    gentilisBold,
+    gentilisRegular,
+    helvetikerBold,
+    helvetikerRegular,
+  ].forEach((fontUrl) => {
+    new FontLoader().load(fontUrl, function (font) {
+      FightWordEffect.#fonts.push(font);
+    });
   });
-});
 
-/**
- * This is cleanup code for the 3d words.
- *
- * When we go to add new words, the first thing we do is remove any previous words that were already written on that wall.
- *
- * TODO move all of this to the Wall class.
- */
-const drawnOnWall = new Map<string, () => void>();
+  /**
+   * Use this to draw the words on the walls.
+   */
+  static readonly #materials = [
+    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: false }), // front
+    new THREE.MeshPhongMaterial({ color: 0x000000 }), // side
+  ];
 
-/**
- * Call this when the ball hits a wall so we can update the GUI.
- *
- * This is what draws the 3d Batman fight words.
- * @param bounceDimension Which wall
- * @param side Which wall
- */
-function drawOnWall(bounceDimension: "x" | "y" | "z", side: "min" | "max") {
-  // TODO move all of this into Wall.highlightPoint().
-  // This code always draws the words.
-  // Wall.highlightPoint() will include multiple options, and this should be one of them.
-  if (fonts.length == 0) {
-    return;
-  }
+  /**
+   * Add a bevel to text on the back wall so that we can get a 3d effect.
+   * The extruded depth is all but invisible on the back wall.
+   */
+  #textOptions: Partial<TextGeometryParameters> = {};
 
-  if (bounceDimension == "z" && side == "max") {
-    return;
-  }
+  /**
+   * For the top and bottom walls, rotate the text just slightly 
+   * so it gets more light and is easier to see.
+   */
+  #rotateX = 0;
 
-  const key = bounceDimension + side;
+  /**
+   * For the left and right walls, rotate the text just slightly 
+   * so it gets more light and is easier to see.
+   */
+  #rotateY = 0;
 
-  {
-    const cleanPrevious = drawnOnWall.get(key);
-    if (cleanPrevious) {
-      cleanPrevious();
+  constructor(private readonly group: THREE.Group) {
+    if (group.rotation.x != 0) {
+      // The denominator is a little bit arbitrary.
+      // It might be nice to look at the size of the text and do some trig.
+      this.#rotateX = - group.rotation.x / 20;
+    } else if (group.rotation.y != 0) {
+      this.#rotateY = - group.rotation.y / 85;
+    } else {
+      this.#textOptions = {
+        bevelEnabled: true,
+        bevelSize: 0.25,
+        bevelThickness: 0.1 // Same direction as height.
+      };
+
     }
   }
 
-  /**
-   * How much of the words extends inside the box.
-   * This refers to the extruded dimension.
-   */
-  const padding = 0.2;
+  #cleanup: (() => void) | undefined;
 
-  /**
-   * This is the extra dimension we are adding by extruding the text.
-   */
-  const height = bounceDimension == "z" ? 20 : padding;
-
-  const text =
-    pick(batmanFightWords) + "!".repeat(Math.floor(Math.random() * 3) + 1);
-
-  // I tried using TextBufferGeometry.
-  // I ran into a bug:  https://github.com/vitejs/vite/issues/7964
-  // The documentation says that the "Buffer" versions are more efficient.
-  // While investigating this bug I found that TextBufferGeometry is just an alias for TextGeometry, so it's not a big deal.  
-  const textGeo = new TextGeometry(text, {
-    font: pick(fonts),
-    size: 3,
-    height,
-    curveSegments: 4,
-    bevelEnabled: false,
-  });
-  textGeo.computeBoundingBox();
-
-  const centerOffset =
-    -0.5 * (textGeo.boundingBox!.max.x - textGeo.boundingBox!.min.x);
-
-  const textMesh = new THREE.Mesh(
-    textGeo,
-    bounceDimension == "z" ? materialsBack : materials
-  );
-
-  // TODO use Wall.#group and WallInfo.flatten() to simplify this.
-  // The code below is a duplicate of some work we've done elsewhere.
-  if (bounceDimension == "z") {
-    textMesh.position.x = centerOffset + ball.position.x;
-    textMesh.position.y = ball.position.y;
-    textMesh.position.z = boxMin - height + padding;
-  } else if (bounceDimension == "x") {
-    const invert = side == "min" ? 1 : -1;
-    textMesh.position.z = ball.position.z - invert * centerOffset;
-    textMesh.position.y = ball.position.y;
-    textMesh.position.x = invert * (boxMin - height + padding);
-    textMesh.rotation.y = invert * (Math.PI / 2);
-  } else {
-    const invert = side == "min" ? -1 : 1;
-    textMesh.position.x = ball.position.x + centerOffset;
-    textMesh.position.z = ball.position.z;
-    textMesh.position.y = -invert * (boxMin - height + padding);
-    textMesh.rotation.x = invert * (Math.PI / 2);
+  isActive() {
+    return this.#cleanup !== undefined;
   }
-  scene.add(textMesh);
 
-  drawnOnWall.set(key, () => {
-    // Cleanup code.
-    scene.remove(textMesh);
-    textGeo.dispose();
-  });
+  end() {
+    this.#cleanup?.();
+    this.#cleanup = undefined;
+  }
+
+  canDraw() {
+    return FightWordEffect.#fonts.length > 0;
+  }
+
+  /**
+   * 
+   * @param x Coordinates relative to the group.
+   * @param y Coordinates relative to the group.
+   * @returns `true` if we did something. `false` if not.
+   */
+  draw(x: number, y: number): boolean {
+    this.end();
+    if (!this.canDraw()) {
+      return false;
+    }
+
+    /**
+     * This is the extra dimension we are adding by extruding the text.
+     */
+    const height = 0.2 + Math.random() * 0.4;
+
+    // TODO touché works perfectly in some fonts, but in others the é becomes a ?.
+    // I'd like to keep touché, but make it always work.
+    const text =
+      pick(batmanFightWords) + "!".repeat(Math.floor(Math.random() * 3) + 1);
+
+    const textGeo = new TextGeometry(text, {
+      font: pick(FightWordEffect.#fonts),
+      size: 3,
+      height,
+      curveSegments: 4,
+      ...this.#textOptions
+    });
+    textGeo.computeBoundingBox();
+    if (!textGeo.boundingBox) {
+      throw new Error("wtf");
+    }
+
+    const textMesh = new THREE.Mesh(
+      textGeo,
+      FightWordEffect.#materials
+    );
+
+    const textWidth = textGeo.boundingBox.max.x - textGeo.boundingBox.min.x;
+    const textHeight = textGeo.boundingBox.max.y - textGeo.boundingBox.min.y;
+
+    const bevelPadding = this.#textOptions.bevelSize ?? 0;
+
+    let textX = x - textWidth / 2;
+    if (textX + textWidth + bevelPadding > boxMax) {
+      // If the text is too far to the right, move it to the left,
+      // so the right edge of the text lines up with the right edge of the wall.
+      textX = boxMax - textWidth - bevelPadding;
+    }
+    if (textX - bevelPadding < boxMin) {
+      // If the text is too far to the left, move it to the right,
+      // so the left edge of the text lines up with the left edge of the wall.
+      // If the text is too wide to fit on the wall, this rule takes precedence,
+      // so the start of the word will always be visible.
+      textX = boxMin + bevelPadding;
+    }
+
+    let textY = y;
+    if (textY + bevelPadding > boxMax) {
+      textY = boxMax - bevelPadding;
+    }
+    // TODO the top of the text is sometimes slightly cut off.
+    // There's something wrong in the following code.
+    if (textY - bevelPadding - textHeight < boxMin) {
+      textY = boxMin + bevelPadding + textHeight;
+    }
+
+    textMesh.position.set(textX, textY, height);
+    textMesh.rotation.x = this.#rotateX;
+    textMesh.rotation.y = this.#rotateY;
+    textMesh.receiveShadow = true;
+    this.group.add(textMesh);
+
+    this.#cleanup = () => {
+      this.group.remove(textMesh);
+      textGeo.dispose();
+    }
+
+    return true;
+  }
+}
+
+class WeightedRandom<T> {
+  readonly #all: { value: T, weight: number }[] = [];
+  #totalWeight = 0;
+  add(value: T, weight: number) {
+    if ((weight <= 0) || !isFinite(weight)) {
+      // Negative weights would definitely cause problems.
+      // Adding something with a weight of 0 would make isEmpty()
+      // more complicated.
+      // I could do just ignore anything with a weight of 0, but
+      // I don't expect that case so let's just call it illegal.
+      throw new Error("wtf");
+    }
+    this.#all.push({ value, weight });
+    this.#totalWeight += weight;
+  }
+  isEmpty() {
+    return this.#all.length == 0;
+  }
+  pick(): T {
+    if (this.isEmpty()) {
+      throw new Error("wtf");
+    }
+    let skip = Math.random() * this.#totalWeight;
+    for (const { value, weight } of this.#all) {
+      skip -= weight;
+      if (skip <= 0) {
+        return value;
+      }
+    }
+    // We might get here due to round off error.  But that should be rare.
+    console.log("Round off error?", this);
+    return this.#all[0].value;
+  }
 }
 
 /**
@@ -1000,11 +1031,13 @@ class SolidWall extends Wall {
     })
   );
   #bumpEffect = new BumpEffect(this.#plane.material);
+  #fightWordEffect: FightWordEffect;
   #ticTacToe: TicTacToe;
   private constructor(private readonly info: WallInfo) {
     super()
     this.#ticTacToe = new TicTacToe(this.roughCanvas, this.info);
     info.init(this.#group);
+    this.#fightWordEffect = new FightWordEffect(this.#group);
     scene.add(this.#group);
     this.canvas.width = Wall.canvasSize;
     this.canvas.height = Wall.canvasSize;
@@ -1014,30 +1047,25 @@ class SolidWall extends Wall {
     this.#plane.receiveShadow = true;
   }
 
-  /**
-   *
-   * @param point A 3d point in the same coordinate system as the ball.
-   * @returns A 2d point in the canvas's coordinate system.
-   */
-  protected flatten(point: THREE.Vector3) {
-    const { x, y } = this.info.flatten(point);
-    return new THREE.Vector2(Wall.xToCanvas(x), Wall.yToCanvas(y));
-  }
-
   highlightPoint(point: THREE.Vector3, time: DOMHighResTimeStamp) {
-    const { x, y } = this.flatten(point);
-
+    const { x: groupX, y: groupY } = this.info.flatten(point);
+    const canvasX = Wall.xToCanvas(groupX);
+    const canvasY = Wall.yToCanvas(groupY);
     //this.makeWall();
 
+    /**
+     * Draw a small circle exactly where the ball hit.  This was
+     * originally aimed at development and debugging.
+     */
     const drawCircle = () => {
-      this.roughCanvas.circle(x, y, Wall.canvasSize / 5, {
+      this.roughCanvas.circle(canvasX, canvasY, Wall.canvasSize / 5, {
         stroke: this.info.strokeColor,
         strokeWidth: 10,
         roughness: 3,
       });
     };
 
-    //drawStar();
+    //this.drawStar();
 
     const canvasSize = Wall.canvasSize;
 
@@ -1051,14 +1079,52 @@ class SolidWall extends Wall {
           return canvasSize * (5 / 6);
         }
       }
-      return { x: findDimensionCenter(x), y: findDimensionCenter(y) };
+      return { x: findDimensionCenter(canvasX), y: findDimensionCenter(canvasY) };
     }
 
-    const cell = TicTacToe.findCell(x, y);
+    const cell = TicTacToe.findCell(canvasX, canvasY);
+
+    type Action = "star" | "ttt" | "bump" | "words";
+    const actions = new WeightedRandom<Action>();
+
+    if (this.#ticTacToe.canAddMore()) {
+      actions.add("ttt", 20);
+    } else {
+      actions.add("star", 5);
+      // TODO it would be nice if the was a way to reset the board sometimes.
+    }
+
+    if (this.#fightWordEffect.canDraw() && !this.#bumpEffect.isActive()) {
+      actions.add("words", 5);
+    }
+
+    actions.add("bump", 5);
+
+    const action = actions.pick();
+
+    this.#fightWordEffect.end();
+    switch (action) {
+      case "bump": {
+        this.#bumpEffect.start(time, canvasX, canvasY);
+        break;
+      }
+      case "star": {
+        this.drawStar(canvasX, canvasY, this.info.strokeColor);
+        this.#ticTacToe.disable();
+        break;
+      }
+      case "ttt": {
+        this.#ticTacToe.add(cell);
+        break;
+      }
+      case "words": {
+        this.#fightWordEffect.draw(groupX, groupY);
+        break;
+      }
+    }
+
     if (this.#ticTacToe.canAdd(cell)) {
-      this.#ticTacToe.add(cell);
     } else if (!this.#bumpEffect.isActive()) {
-      this.#bumpEffect.start(time, x, y);
     }
 
     this.texture.needsUpdate = true;
@@ -1227,6 +1293,8 @@ let ballVelocity = {
   x: 0,
   z: 0,
 };
+
+(window as any).phil = { rightLight, leftLight, scene, makeMarker, ball };
 
 /**
  * The last time that we updated the ball's position.
@@ -1434,18 +1502,6 @@ observer.observe(canvasHolder, { box: "device-pixel-content-box" });
 
     const speed = scaleSpeedFromGui(inputSpeed);
     ballVelocity = randomDirection3(speed);
-    /*
-    console.log({
-      inputSpeed,
-      speed,
-      ballVelocity,
-      resultingSpeed: Math.hypot(
-        ballVelocity.x,
-        ballVelocity.y,
-        ballVelocity.z
-      ),
-    });
-    */
   };
 
   speedControlUpdate();
