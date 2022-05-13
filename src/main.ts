@@ -830,6 +830,13 @@ class FightWordEffect {
     if (group.rotation.x != 0) {
       // The denominator is a little bit arbitrary.
       // It might be nice to look at the size of the text and do some trig.
+      //
+      // Or at least rotate the object around a more specific point.
+      // One side should touch the wall perfectly, just like if there was no rotation.
+      // The other side should be slightly recessed into the wall.
+      // As long at the height is big enough, nothing important will get lost.
+      //
+      // TODO avoid the case where the cases where part of the text seems to be floating.
       this.#rotateX = - group.rotation.x / 20;
     } else if (group.rotation.y != 0) {
       this.#rotateY = - group.rotation.y / 85;
@@ -897,36 +904,64 @@ class FightWordEffect {
       FightWordEffect.#materials
     );
 
+    // By default the left edge of the text and the baseline of the text are very close to the origin.
+
+    // I'm centering the text left to right the same way as the example I first copied this from.
+    // This assumes that the left edge is exactly ax x=0, which is close but not true.
     const textWidth = textGeo.boundingBox.max.x - textGeo.boundingBox.min.x;
-    const textHeight = textGeo.boundingBox.max.y - textGeo.boundingBox.min.y;
-
-    const bevelPadding = this.#textOptions.bevelSize ?? 0;
-
     let textX = x - textWidth / 2;
-    if (textX + textWidth + bevelPadding > boxMax) {
-      // If the text is too far to the right, move it to the left,
-      // so the right edge of the text lines up with the right edge of the wall.
-      textX = boxMax - textWidth - bevelPadding;
+
+    // If the text is off the left or right edge, move it just enough that it entirely fits.
+    //
+    // If it's off both edges, preserve the left edge.
+    // That's more of an observation than a rule.  I don't ever expect it to be too wide to display.
+    // If I did, I'd add a smarter rule, like centering and/or shrinking the text.
+    {
+      const textRightEdge = textX + textGeo.boundingBox.max.x;
+      const tooFarRight = textRightEdge - boxMax;
+      if (tooFarRight > 0) {
+        textX -= tooFarRight;
+      }
     }
-    if (textX - bevelPadding < boxMin) {
-      // If the text is too far to the left, move it to the right,
-      // so the left edge of the text lines up with the left edge of the wall.
-      // If the text is too wide to fit on the wall, this rule takes precedence,
-      // so the start of the word will always be visible.
-      textX = boxMin + bevelPadding;
+    {
+      const textLeftEdge = textX + textGeo.boundingBox.min.x;
+      // boxMin = -14, textLeftEdge = -14, no problem, already at the edge.
+      // boxMin = -14, textLeftEdge = -13, no problem, one unit of padding.
+      // boxMin = -14, textLeftEdge = -15, 1 unit too far to the left.
+      const tooFarLeft = boxMin - textLeftEdge;
+      if (tooFarLeft > 0) {
+        textX += tooFarLeft;
+      }
     }
 
+    // I'm lining up the baseline of the text with the center of the ball.
+    // Like the x position, this decision is based on the example I copied.
+    // Now that I know more I might want to center it or something like that.
     let textY = y;
-    if (textY + bevelPadding > boxMax) {
-      textY = boxMax - bevelPadding;
+
+    // If it's off the wall, move it as little as possible to keep it from going off the wall.
+    {
+      const textBottomEdge = textY  + textGeo.boundingBox.max.y;
+      const tooFarDown = textBottomEdge - boxMax;
+      if (tooFarDown > 0) {
+        textY -= tooFarDown;
+      }
     }
-    // TODO the top of the text is sometimes slightly cut off.
-    // There's something wrong in the following code.
-    if (textY - bevelPadding - textHeight < boxMin) {
-      textY = boxMin + bevelPadding + textHeight;
+    {
+      const textTopEdge = textY + textGeo.boundingBox.min.y;
+      const tooFarUp = boxMin - textTopEdge;
+      if (tooFarUp > 0) {
+        textY += tooFarUp;
+      }
     }
 
-    textMesh.position.set(textX, textY, height);
+    // textGeo.boundingBox.min.z is 0 if there is no beveling.
+    // It becomes negative if there is some beveling.
+    // Ideally this would depend on the rotation!
+    // See more notes in the constructor.
+    const textZ = height - textGeo.boundingBox.min.z;
+
+    textMesh.position.set(textX, textY, textZ);
     textMesh.rotation.x = this.#rotateX;
     textMesh.rotation.y = this.#rotateY;
     textMesh.receiveShadow = true;
@@ -1089,6 +1124,7 @@ class SolidWall extends Wall {
 
     if (this.#ticTacToe.canAddMore()) {
       actions.add("ttt", 20);
+      // TODO add a small chance of a star here.  And a small chance of a reset.
     } else {
       actions.add("star", 5);
       // TODO it would be nice if the was a way to reset the board sometimes.
@@ -1323,13 +1359,10 @@ function updateBall(time: DOMHighResTimeStamp) {
       if (newValue < ballMin) {
         newValue = ballMin;
         ballVelocity[dimension] = Math.abs(ballVelocity[dimension]);
-        //drawOnWall(dimension, "min");  TODO move this into the Wall class.
-        // Let Wall pick which special effects to use and when.
         walls.find(dimension, ballMin).highlightPoint(ball.position, time);
       } else if (newValue > ballMax) {
         newValue = ballMax;
         ballVelocity[dimension] = -Math.abs(ballVelocity[dimension]);
-        //drawOnWall(dimension, "max");
         walls.find(dimension, ballMax).highlightPoint(ball.position, time);
       }
       ball.position[dimension] = newValue;
