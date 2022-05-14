@@ -730,7 +730,6 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-(window as any).camera = camera;
 const renderer = new THREE.WebGLRenderer({
   canvas,
 });
@@ -802,11 +801,59 @@ class FightWordEffect {
 
   /**
    * Use this to draw the words on the walls.
+   * 
+   * These were MeshPhongMaterial but I had trouble getting the right light on them.
    */
   static readonly #materials = [
-    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: false }), // front
-    new THREE.MeshPhongMaterial({ color: 0x000000 }), // side
+    new THREE.MeshBasicMaterial({ color: 0xffffff }), // front
+    new THREE.MeshBasicMaterial({ color: 0x404040 }), // side
   ];
+
+  /**
+   * Lots of things that are only useful if you are debugging.
+   */
+  static readonly debug = {
+    /**
+     * 0 for normal.  A positive number to leave extra space between the words and the wall.
+     * A negative number to move toward, into, and possibly past the wall.
+     * Normal ball / box / world units.
+     */
+    extraZ: 0,
+
+    /**
+     * An index into the font list.
+     * If the index is invalid, like -1, then randomly pick a font.
+     * -1 is the default.
+     */
+    font: -1,
+
+    /**
+     * What text to display.
+     * undefined is the default meaning pick randomly from the list.
+     * or provide a string to display only that string.
+     */
+    text: undefined as (string | undefined),
+
+    /**
+     * The size of the extruded dimension.
+     * undefined, the default, means to pick a small random number.
+     * Or fill in a number here so it's the same every time.
+     */
+    height: undefined as (number | undefined),
+
+    /**
+     * Avoid all of the random stuff.
+     * So you can get consistent results from one call to draw() to the next.
+     * So only one variable changes at a time.
+     */
+    freeze() {
+      this.text = "Debug!";
+      this.font = 0;
+      this.height = 0.3;
+    },
+
+    all: [] as FightWordEffect[]
+  }
 
   /**
    * Add a bevel to text on the back wall so that we can get a 3d effect.
@@ -814,33 +861,9 @@ class FightWordEffect {
    */
   #textOptions: Partial<TextGeometryParameters> = {};
 
-  /**
-   * For the top and bottom walls, rotate the text just slightly 
-   * so it gets more light and is easier to see.
-   */
-  #rotateX = 0;
-
-  /**
-   * For the left and right walls, rotate the text just slightly 
-   * so it gets more light and is easier to see.
-   */
-  #rotateY = 0;
-
   constructor(private readonly group: THREE.Group) {
-    if (group.rotation.x != 0) {
-      // The denominator is a little bit arbitrary.
-      // It might be nice to look at the size of the text and do some trig.
-      //
-      // Or at least rotate the object around a more specific point.
-      // One side should touch the wall perfectly, just like if there was no rotation.
-      // The other side should be slightly recessed into the wall.
-      // As long at the height is big enough, nothing important will get lost.
-      //
-      // TODO avoid the case where the cases where part of the text seems to be floating.
-      this.#rotateX = - group.rotation.x / 20;
-    } else if (group.rotation.y != 0) {
-      this.#rotateY = - group.rotation.y / 85;
-    } else {
+    FightWordEffect.debug.all.push(this);
+    if (group.rotation.x == 0 && group.rotation.y == 0) {
       this.#textOptions = {
         bevelEnabled: true,
         bevelSize: 0.25,
@@ -880,15 +903,17 @@ class FightWordEffect {
     /**
      * This is the extra dimension we are adding by extruding the text.
      */
-    const height = 0.2 + Math.random() * 0.4;
+    const height = FightWordEffect.debug.height ?? (0.4 + Math.random() * 0.4);
 
     // TODO touché works perfectly in some fonts, but in others the é becomes a ?.
     // I'd like to keep touché, but make it always work.
-    const text =
+    const text = FightWordEffect.debug.text ??
       pick(batmanFightWords) + "!".repeat(Math.floor(Math.random() * 3) + 1);
 
+    const font = FightWordEffect.#fonts[FightWordEffect.debug.font] ?? pick(FightWordEffect.#fonts);
+
     const textGeo = new TextGeometry(text, {
-      font: pick(FightWordEffect.#fonts),
+      font,
       size: 3,
       height,
       curveSegments: 4,
@@ -941,7 +966,7 @@ class FightWordEffect {
 
     // If it's off the wall, move it as little as possible to keep it from going off the wall.
     {
-      const textBottomEdge = textY  + textGeo.boundingBox.max.y;
+      const textBottomEdge = textY + textGeo.boundingBox.max.y;
       const tooFarDown = textBottomEdge - boxMax;
       if (tooFarDown > 0) {
         textY -= tooFarDown;
@@ -959,11 +984,12 @@ class FightWordEffect {
     // It becomes negative if there is some beveling.
     // Ideally this would depend on the rotation!
     // See more notes in the constructor.
-    const textZ = height - textGeo.boundingBox.min.z;
+    const textZ = FightWordEffect.debug.extraZ - textGeo.boundingBox.min.z;
+    //if (textGeo.boundingBox.min.z != 0) {
+    //  console.log(text, textGeo.boundingBox.min.z, textGeo.boundingBox)
+    //}
 
     textMesh.position.set(textX, textY, textZ);
-    textMesh.rotation.x = this.#rotateX;
-    textMesh.rotation.y = this.#rotateY;
     textMesh.receiveShadow = true;
     this.group.add(textMesh);
 
@@ -1159,10 +1185,7 @@ class SolidWall extends Wall {
       }
     }
 
-    if (this.#ticTacToe.canAdd(cell)) {
-    } else if (!this.#bumpEffect.isActive()) {
-    }
-
+    // TODO is this still required?  Seems like each individual effect will call this, if required.
     this.texture.needsUpdate = true;
   }
 
@@ -1321,7 +1344,6 @@ function makeMarker(x: number | THREE.Object3D = 0, y = 0, z = 0): THREE.Object3
   scene.add(marker);
   return marker;
 }
-(window as any).makeMarker = makeMarker;
 
 const ball = makeMarker();
 let ballVelocity = {
@@ -1330,7 +1352,7 @@ let ballVelocity = {
   z: 0,
 };
 
-(window as any).phil = { rightLight, leftLight, scene, makeMarker, ball };
+(window as any).phil = { rightLight, leftLight, scene, makeMarker, ball, FightWordEffect, SolidWall };
 
 /**
  * The last time that we updated the ball's position.
