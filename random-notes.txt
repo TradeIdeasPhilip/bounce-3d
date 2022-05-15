@@ -1,0 +1,11 @@
+SolidWall=phil.SolidWall;
+context = phil.SolidWall.rear.context;
+saved = context.getImageData(0, 0, SolidWall.canvasSize, SolidWall.canvasSize);
+context.fillStyle = "blue";
+context.fillRect(100, 100, 100, 100);
+context.clearRect(200, 200, 100, 100);
+phil.SolidWall.rear.texture.needsUpdate = true;
+context.putImageData(saved, 0, 0);
+phil.SolidWall.rear.texture.needsUpdate = true;
+context.globalAlpha = 0.25;
+context.globalAlpha = 1;

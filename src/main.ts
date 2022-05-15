@@ -94,7 +94,7 @@ abstract class Wall {
    * Draw on this at any time.
    * (Ideally but not necessarily in the animationFrame callback.)
    *
-   * Set `this.texture.needsUpdate = true;` at any time to copy from the canvas to the 3d object.
+   * Call `this.forceUpdate()` at any time to copy from the canvas to the 3d object.
    * The copy will probably happen in the next animationFrame callback.
    *
    * Each wall gets its own canvas because the update isn't done immediately.
@@ -121,7 +121,12 @@ abstract class Wall {
       roughness: 2 * Math.random() * 2,
       disableMultiStroke: Math.random() > 0.5,
     });
+    this.forceUpdate();
   };
+
+  protected forceUpdate() {
+    this.texture.needsUpdate = true;
+  }
 
   abstract highlightPoint(point: THREE.Vector3, time: number): void;
   abstract doAnimationFrame(time: DOMHighResTimeStamp): void;
@@ -479,19 +484,37 @@ type CellContents = "X" | "O" | undefined;
  */
 class TicTacToe {
   /**
+   * Clear all moves from the board.
+   * 
+   * Note that this does **not** draw anything.
+   * SolidWall and WallDrawer are responsible for that.
+   * SolidWall should request a redraw from WallDrawer and a reset() from this at the same time.
+   */
+  reset() {
+    // `new Array(9)` will be filled with 9 "empty" elements.
+    // "Empty" is *not* the same as undefined!
+    // [] and for/of work as expected, but .forEach() and .some() skip the "empty" elements.
+    // .map() does a hybrid!
+    // I cannot find any good documentation on the subject.
+    // Array.from() fixes the problem.
+    this.#squares = Array.from(new Array(9));
+    this.#nextMove = (Math.random() >= 0.5) ? "X" : "O";
+  }
+  /**
    * 
    * @param roughCanvas Used to draw on the wall.
    * @param wallInfo Describes the wall.
    */
   constructor(private readonly roughCanvas: RoughCanvas,
     private readonly wallInfo: Readonly<WallInfo>) {
+    this.reset();
   }
   /**
    * Alternate between X's move and O's move.
    * Randomly pick who goes first.
    * Set this to undefined when the game is over.
    */
-  #nextMove: CellContents = (Math.random() >= 0.5) ? "X" : "O";
+  #nextMove: CellContents;
   /**
    * 
    * @returns True if there is at least one legal move left.
@@ -522,13 +545,7 @@ class TicTacToe {
    * What moves have been taken so far.
    * Use `toIndex()` to create an index into this array.
    */
-  // `new Array(9)` will be filled with 9 "empty" elements.
-  // That is *not* the same as undefined!
-  // [] and for/of work as expected, but .forEach() and .some() skip the "empty" elements.
-  // .map() does a hybrid!
-  // I cannot find any good documentation on the subject.
-  // Array.from() fixes the problem.
-  #squares: CellContents[] = Array.from(new Array(9));
+  #squares!: CellContents[];
   /**
    * 
    * @param rowAndColumn The space to inspect.
@@ -557,6 +574,10 @@ class TicTacToe {
    */
   add(rowAndColumn: RowAndColumn) {
     if (!this.canAdd(rowAndColumn)) {
+      // This is explicitly legal.
+      // However, I don't expect to get here.
+      // I purposely made this class very flexible, but I know how the caller intends to use this function.
+      console.log("Can't add tic tac toe move.");
       return false;
     } else {
       const thisMove = this.#nextMove;
@@ -985,9 +1006,6 @@ class FightWordEffect {
     // Ideally this would depend on the rotation!
     // See more notes in the constructor.
     const textZ = FightWordEffect.debug.extraZ - textGeo.boundingBox.min.z;
-    //if (textGeo.boundingBox.min.z != 0) {
-    //  console.log(text, textGeo.boundingBox.min.z, textGeo.boundingBox)
-    //}
 
     textMesh.position.set(textX, textY, textZ);
     textMesh.receiveShadow = true;
@@ -1072,6 +1090,153 @@ type WallInfo = {
   init(group: THREE.Group): void;
 };
 
+/**
+ * This class is responsible for drawing the tic-tac-toe board.
+ * The board is always blank after we draw it.  Use the TicTacToe
+ * class to fill in the moves.
+ * 
+ * This class also draws the background.  Other classes can draw
+ * on the wall, but this class can overwrite the old drawings.
+ * 
+ * This class can draw things instantly, as in the constructor,
+ * or it can draw things in an animated way.
+ */
+class WallDrawer {
+  /**
+   * This will immediately draw the board, but will not start any animations.
+   * @param context 
+   * @param roughCanvas 
+   * @param colors 
+   * @param forceUpdate 
+   */
+  constructor(private readonly context: CanvasRenderingContext2D,
+    private readonly roughCanvas: RoughCanvas,
+    private readonly colors: { readonly fillColor: string, readonly strokeColor: string },
+    private readonly forceUpdate: () => void) {
+    this.drawComplete();
+  }
+  static readonly #normalRandomness = 3;
+  /**
+   * Draw a new tic-tac-toe board.
+   * 
+   * If an animation is in progress, end it.
+   * 
+   * Either way, clear the board and draw a fresh board.
+   */
+  drawComplete() {
+    this.#program = undefined;
+    this.context.globalAlpha = 1;
+    this.context.fillStyle = this.colors.fillColor;
+    const canvasSize = Wall.canvasSize;
+    this.context.fillRect(0, 0, canvasSize, canvasSize);
+    this.drawForeground(WallDrawer.#normalRandomness);
+    this.forceUpdate();
+  }
+  /**
+   * It is safe to call this at any time.  If a previous
+   * animation was in progress, that will be stopped and a new
+   * animation will start fresh.
+   * @param time Standard animation time.
+   */
+  startAnimation(time: DOMHighResTimeStamp) {
+    const startTime = time;
+    const endTime = startTime + 1000 + Math.random() * 500;
+    let nextRedrawTime = 0;
+    const randomness = makeLinear(startTime, 10, endTime, WallDrawer.#normalRandomness);
+    const backgroundAlpha = makeLinear(startTime, 0, endTime, 1);
+    const foregroundAlpha = makeLinear(startTime, 0.6, endTime, 1);
+    const context = this.context;
+    const canvasSize = SolidWall.canvasSize;
+    const originalImage = context.getImageData(0, 0, canvasSize, canvasSize);
+    this.#program = (time: DOMHighResTimeStamp) => {
+      if (time >= endTime) {
+        this.drawComplete();
+      } else if (time >= nextRedrawTime) {
+        context.putImageData(originalImage, 0, 0);
+        context.globalAlpha = backgroundAlpha(time);
+        this.context.fillStyle = this.colors.fillColor;
+        this.context.fillRect(0, 0, canvasSize, canvasSize);
+        context.globalAlpha = foregroundAlpha(time);
+        this.drawForeground(randomness(time));
+        this.forceUpdate();
+        const timeRemaining = endTime - time;
+        const minPause = 150;
+        const maxPause = 250;
+        if (timeRemaining < minPause * 2) {
+          // Don't try to split the remaining into two separate pauses.
+          // At least one would be less than minPause.
+          nextRedrawTime = endTime;
+        } else {
+          const firstPossibleRedrawTime = time + minPause;
+          const lastPossibleRedrawTime = Math.min(endTime - minPause, time + maxPause);
+          nextRedrawTime = firstPossibleRedrawTime + Math.random() * (lastPossibleRedrawTime - firstPossibleRedrawTime);
+        }
+        //console.log({ time, nextRedrawTime, diff: nextRedrawTime - time });
+      }
+      this.context.globalAlpha = 1;
+    }
+    this.#program(time);
+  }
+
+  /**
+   * The currently active animation, if any.
+   */
+  #program: ((time: DOMHighResTimeStamp) => void) | undefined;
+
+  /**
+   * If isActive() returns true, this program will periodically
+   * overwrite everything on the canvas.  If you draw something new
+   * on the canvas it will be overwritten in the next animation frame.
+   * 
+   * If you want to draw on the canvas, wait for this to be false,
+   * or call drawCompleted() to ensure it is false.
+   * @returns `true` if an animation is currently in progress.
+   */
+  isActive() {
+    return this.#program != undefined;
+  }
+  /**
+   * Call this once per animation frame.
+   * @param time Standard timestamp used by performance.now() and animation frames.
+   */
+  doAnimationFrame(time: DOMHighResTimeStamp) {
+    this.#program?.(time);
+  }
+
+  /**
+   * You might want to set the globalAlpha before calling this.
+   * @param randomness How crazy to make it.
+   */
+  private drawForeground(randomness: number) {
+    const roughCanvas = this.roughCanvas;
+    const margin = Wall.margin;
+    const width = Wall.canvasSize;
+    const height = Wall.canvasSize;
+    const options: Options = {
+      stroke: this.colors.strokeColor,
+      strokeWidth: 10,
+      roughness: randomness,
+      bowing: randomness,
+    };
+    roughCanvas.line(margin, height / 3, width - margin, height / 3, options);
+    roughCanvas.line(
+      margin,
+      (height * 2) / 3,
+      width - margin,
+      (height * 2) / 3,
+      options
+    );
+    roughCanvas.line(width / 3, margin, width / 3, height - margin, options);
+    roughCanvas.line(
+      (width * 2) / 3,
+      margin,
+      (width * 2) / 3,
+      height - margin,
+      options
+    );
+  }
+}
+
 class SolidWall extends Wall {
   /**
    * This stores the position and rotation of the wall.
@@ -1094,6 +1259,7 @@ class SolidWall extends Wall {
   #bumpEffect = new BumpEffect(this.#plane.material);
   #fightWordEffect: FightWordEffect;
   #ticTacToe: TicTacToe;
+  #wallDrawer: WallDrawer;
   private constructor(private readonly info: WallInfo) {
     super()
     this.#ticTacToe = new TicTacToe(this.roughCanvas, this.info);
@@ -1102,7 +1268,7 @@ class SolidWall extends Wall {
     scene.add(this.#group);
     this.canvas.width = Wall.canvasSize;
     this.canvas.height = Wall.canvasSize;
-    this.makeWall();
+    this.#wallDrawer = new WallDrawer(this.context, this.roughCanvas, this.info, () => this.forceUpdate());
     this.#group.add(this.#plane);
     this.#plane.castShadow = true;
     this.#plane.receiveShadow = true;
@@ -1126,40 +1292,35 @@ class SolidWall extends Wall {
       });
     };
 
-    //this.drawStar();
-
-    const canvasSize = Wall.canvasSize;
-
-    function findCellCenter() {
-      function findDimensionCenter(input: number) {
-        if (input < canvasSize / 3) {
-          return canvasSize / 6;
-        } else if (input < canvasSize * (2 / 3)) {
-          return canvasSize / 2;
-        } else {
-          return canvasSize * (5 / 6);
-        }
-      }
-      return { x: findDimensionCenter(canvasX), y: findDimensionCenter(canvasY) };
-    }
-
     const cell = TicTacToe.findCell(canvasX, canvasY);
+    const canDrawOnWalls = !this.#wallDrawer.isActive();
 
-    type Action = "star" | "ttt" | "bump" | "words";
+    type Action = "star" | "ttt" | "bump" | "words" | "wall";
     const actions = new WeightedRandom<Action>();
 
-    if (this.#ticTacToe.canAddMore()) {
-      actions.add("ttt", 20);
-      // TODO add a small chance of a star here.  And a small chance of a reset.
-    } else {
-      actions.add("star", 5);
-      // TODO it would be nice if the was a way to reset the board sometimes.
+    if (canDrawOnWalls) {
+      if (this.#ticTacToe.canAddMore()) {
+        if (this.#ticTacToe.canAdd(cell)) {
+          actions.add("ttt", 20);
+        }
+        actions.add("star", 2);
+        actions.add("wall", 0.2);
+      } else {
+        actions.add("star", 5);
+        actions.add("wall", 1);
+      }
     }
 
     if (this.#fightWordEffect.canDraw() && !this.#bumpEffect.isActive()) {
       actions.add("words", 5);
     }
 
+    // TODO The bump is often hard or impossible to see on the back wall.
+    // I wish I knew the exact conditions when it would look good.
+    // I would disable the bump when it looks bad, but give it a much higher priority when it looks good.
+    //
+    // That said, the bump is currently the only effect that can never be disabled.  (I.e. the bump is
+    // the effect of last resort.)  If there is a  way to disable this, too, then some other logic needs to change.
     actions.add("bump", 5);
 
     const action = actions.pick();
@@ -1177,52 +1338,19 @@ class SolidWall extends Wall {
       }
       case "ttt": {
         this.#ticTacToe.add(cell);
+        this.forceUpdate();
         break;
       }
       case "words": {
         this.#fightWordEffect.draw(groupX, groupY);
         break;
       }
+      case "wall": {
+        this.#wallDrawer.startAnimation(time);
+        this.#ticTacToe.reset();
+        break;
+      }
     }
-
-    // TODO is this still required?  Seems like each individual effect will call this, if required.
-    this.texture.needsUpdate = true;
-  }
-
-  protected makeWall() {
-    this.context.fillStyle = this.info.fillColor;
-    const margin = Wall.margin;
-    const width = this.canvas.width;
-    const height = this.canvas.height;
-    this.context.fillRect(0, 0, width, height);
-
-    const options: Options = {
-      stroke: this.info.strokeColor,
-      strokeWidth: 10,
-      roughness: 3,
-      bowing: 3,
-    };
-    const roughCanvas = this.roughCanvas;
-    // TODO cache the Drawable result.
-    // By default, we want to redraw the line in exactly the same place each time.
-    roughCanvas.line(margin, height / 3, width - margin, height / 3, options);
-    roughCanvas.line(
-      margin,
-      (height * 2) / 3,
-      width - margin,
-      (height * 2) / 3,
-      options
-    );
-    roughCanvas.line(width / 3, margin, width / 3, height - margin, options);
-    roughCanvas.line(
-      (width * 2) / 3,
-      margin,
-      (width * 2) / 3,
-      height - margin,
-      options
-    );
-
-    this.texture.needsUpdate = true;
   }
 
   static readonly rear = new this({
@@ -1287,6 +1415,7 @@ class SolidWall extends Wall {
 
   doAnimationFrame(time: DOMHighResTimeStamp) {
     this.#bumpEffect.doAnimationFrame(time);
+    this.#wallDrawer.doAnimationFrame(time);
   }
 }
 
