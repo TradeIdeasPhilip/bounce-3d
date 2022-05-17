@@ -1237,6 +1237,84 @@ class WallDrawer {
   }
 }
 
+class BulletDrawer {
+  private static readonly img = getById("bulletBig", HTMLImageElement);
+  static isReady() {
+    // These values are 0 if the image hasn't loaded yet, or if the image failed to load.
+    return (this.img.naturalHeight > 0) && (this.img.naturalWidth > 0);
+  }
+  /**
+   * If you draw `img` with a width of `w`, the center of the bullet hole will be `xCenterOffset * w` to the right of the center of `img`.
+   */
+  private static xCenterOffset = -2.5 / 120;
+  /**
+   * If you draw `img` with a height of `h`, the center of the bullet hole will be `yCenterOffset * h` below the center of `img`.
+   */
+  private static yCenterOffset = 10 / 120;
+  /**
+   * If you draw `img` with a width of `w` and a position of (`x`, `y`), the center of the bullet hole will be at `xCenter * w + x`.
+   */
+  private static xCenter = 0.5 + this.xCenterOffset;
+  /**
+   * If you draw `img` with a height of `h` and a position of (`x`, `y`), the center of the bullet hole will be at `yCenter * h + y`.
+   */
+  private static yCenter = 0.5 + this.yCenterOffset;
+  /**
+   * Draw a bullet hole.
+   * @param context 
+   * @param centerX Where to put the center of the bullet hole.
+   * @param centerY Where to put the center of the bullet hole.
+   * @param width How wide to make the image.  Note that the image includes some padding that is transparent.
+   * @param aspectRatio How tall to make the image.  1 means to preserve the original aspect ration.  2 means to make the image
+   * twice as wide / half as tall as the original.  0.5 means to make the image half as wide / twice as tall as the original. 
+   */
+  private static getHeight(width: number, aspectRatio: number) {
+    const naturalHeight = this.img.naturalHeight;
+    const naturalWidth = this.img.naturalWidth;
+    return naturalHeight * (width / naturalWidth) / aspectRatio;
+  }
+  static draw(context: CanvasRenderingContext2D, centerX: number, centerY: number, width: number, aspectRatio: number) {
+    // I experimented with setting context.globalAlpha to a value less than 1.
+    // I also tried setting context.globalCompositeOperation to "luminosity".
+    // These both showed the 3d shape of the image, but kept the color of the wall.
+    // The idea was right, but after several attempts I deiced that the silvery look of the original image looked the best. 
+    const x = centerX - BulletDrawer.xCenter * width;
+    const height = this.getHeight(width, aspectRatio);
+    const y = centerY - BulletDrawer.yCenter * height;
+    context.drawImage(BulletDrawer.img, x, y, width, height);
+  }
+  /**
+   * For debugging.  This takes the same input as draw(), but it draws a much simpler shape.
+   * The center of the X corresponds to (centerX, centerY).
+   * @param context 
+   * @param centerX 
+   * @param centerY 
+   * @param width 
+   * @param aspectRatio 
+   * @param color
+   */
+  static drawLines(context: CanvasRenderingContext2D, centerX: number, centerY: number, width: number, aspectRatio: number, color = "#FF00FF") {
+    context.save();
+    context.lineWidth = 2.5;
+    context.strokeStyle = color;
+    const height = this.getHeight(width, aspectRatio);
+    const top = centerY - height / 2;
+    const bottom = centerY + height / 2;
+    const left = centerX - width / 2;
+    const right = centerX + width / 2;
+    context.beginPath();
+    context.moveTo(left, top);
+    context.lineTo(right, bottom);
+    context.moveTo(right, top);
+    context.lineTo(left, bottom);
+    context.stroke();
+    context.restore();
+  }
+  private constructor() {
+    throw new Error("wtf");
+  }
+}
+
 class SolidWall extends Wall {
   /**
    * This stores the position and rotation of the wall.
@@ -1295,7 +1373,7 @@ class SolidWall extends Wall {
     const cell = TicTacToe.findCell(canvasX, canvasY);
     const canDrawOnWalls = !this.#wallDrawer.isActive();
 
-    type Action = "star" | "ttt" | "bump" | "words" | "wall";
+    type Action = "star" | "ttt" | "bump" | "words" | "wall" | "bullet";
     const actions = new WeightedRandom<Action>();
 
     if (canDrawOnWalls) {
@@ -1305,9 +1383,11 @@ class SolidWall extends Wall {
         }
         actions.add("star", 2);
         actions.add("wall", 0.2);
+        //actions.add("bullet", 0.4);
       } else {
         actions.add("star", 5);
         actions.add("wall", 1);
+        //actions.add("bullet", 1);
       }
     }
 
@@ -1348,6 +1428,11 @@ class SolidWall extends Wall {
       case "wall": {
         this.#wallDrawer.startAnimation(time);
         this.#ticTacToe.reset();
+        break;
+      }
+      case "bullet": {
+        BulletDrawer.draw(this.context, canvasX, canvasY, 200, 1);
+        this.#ticTacToe.disable();
         break;
       }
     }
@@ -1481,7 +1566,7 @@ let ballVelocity = {
   z: 0,
 };
 
-(window as any).phil = { rightLight, leftLight, scene, makeMarker, ball, FightWordEffect, SolidWall };
+(window as any).phil = { rightLight, leftLight, scene, makeMarker, ball, FightWordEffect, SolidWall, BulletDrawer };
 
 /**
  * The last time that we updated the ball's position.

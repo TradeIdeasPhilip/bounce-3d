@@ -8,13 +8,11 @@ This project uses three.js.
 I.e. WebGL and GPUs.
 
 ## Current Status
-I'm testing a lot of ideas at once.
-Currently you see several different things that don't make sense together.
-And other items are temporarily commented out.
+It's looking pretty good.
 
-I'd like to play with the lights and shadows and reflections more.
-
-I want to make the shadows work!
+There are a lot of TODO items in the code.
+And I've always got new ideas that I want to try, so I may never be _done_.
+But what's present seems to work pretty well.
 
 ## See it Running
 * Run it yourself

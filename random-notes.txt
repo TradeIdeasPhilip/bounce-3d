@@ -1,3 +1,6 @@
+This first section was helping me debug some 3d layout issues.
+I had some extra space between two object that should have been touching.
+
 SolidWall=phil.SolidWall;
 context = phil.SolidWall.rear.context;
 saved = context.getImageData(0, 0, SolidWall.canvasSize, SolidWall.canvasSize);
@@ -9,3 +12,79 @@ context.putImageData(saved, 0, 0);
 phil.SolidWall.rear.texture.needsUpdate = true;
 context.globalAlpha = 0.25;
 context.globalAlpha = 1;
+
+
+
+This section was helping me create and test the code to draw a bullet mark in a SolidWall.
+One of the big issues was just finding the center of the bullet hole compared to the image as a whole.
+
+context = phil.SolidWall.rear.context
+forceUpdate = phil.SolidWall.rear.forceUpdate.bind(phil.SolidWall.rear)
+context.drawImage($0, 10, 10)
+forceUpdate()
+
+$0.naturalHeight
+603
+$0.naturalWidth
+613
+context.drawImage($0, 10, 10, 120, 120)
+context.globalAlpha = 0.5
+context.drawImage($0, 600-120, 600-120, 120, 120)
+context.globalAlpha = 0.75
+context.drawImage($0, 0, 600-120, 120, 120)
+context.globalAlpha = 1
+context.globalCompositeOperation = "luminosity"
+context.drawImage($0, 600-120, 0, 120, 120)
+context.globalCompositeOperation="source-over"
+forceUpdate()
+
+context = phil.SolidWall.rear.context
+forceUpdate = phil.SolidWall.rear.forceUpdate.bind(phil.SolidWall.rear)
+img = document.getElementById("bulletBig")
+context.fillStyle="black";
+context.fillRect(0, 0, 60, 60)
+context.fillRect(60, 60, 60, 60)
+context.drawImage(img, 0, 0, 120, 120)
+context.strokeStyle="blue"
+context.lineWidth = 2.5
+context.beginPath()
+yOffset = 0
+xOffset = -2.5
+context.beginPath()
+context.moveTo(0 + xOffset, 0 + yOffset)
+context.lineTo(120 + xOffset, 120 + yOffset)
+context.moveTo(120 + xOffset, 0 + yOffset)
+context.lineTo(0 + xOffset, 120 + yOffset)
+context.stroke();
+context.strokeStyle="green"
+yOffset = 20
+xOffset = -2.5
+context.beginPath()
+context.moveTo(0 + xOffset, 0 + yOffset)
+context.lineTo(120 + xOffset, 120 + yOffset)
+context.moveTo(120 + xOffset, 0 + yOffset)
+context.lineTo(0 + xOffset, 120 + yOffset)
+context.stroke();
+forceUpdate()
+
+context = phil.SolidWall.rear.context
+forceUpdate = phil.SolidWall.rear.forceUpdate.bind(phil.SolidWall.rear)
+BulletDrawer = phil.BulletDrawer
+forceUpdate = phil.SolidWall.rear.forceUpdate.bind(phil.SolidWall.rear)
+BulletDrawer.draw(context, 200, 200, 200, 1)
+BulletDrawer.drawLines(context, 200, 200, 200, 1)
+forceUpdate()
+
+// Tall and thin.
+BulletDrawer.draw(context, 400, 200, 100, 0.5)
+BulletDrawer.drawLines(context, 400, 200, 100, 0.5)
+forceUpdate()
+
+// Short and fat.
+BulletDrawer.draw(context, 200, 400, 200, 2)
+BulletDrawer.drawLines(context, 200, 400, 200, 2)
+forceUpdate()
+
+BulletDrawer.draw(context, 400, 400, 100, 1)
+BulletDrawer.drawLines(context, 400, 400, 100, 1)
+forceUpdate()
