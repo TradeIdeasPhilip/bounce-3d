@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+    </style>
+    <script type="module" src="space-sample.ts">
+    </script>
+  </head>
+  <body>
+    <svg id="svg" viewBox="0 0 100 100">
+
+    </svg>
+    <table>
+      <tr class="example">
+        <td>
+          <div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+          <div><span> </span><span> </span><span> </span><span>6</span><span>7</span></div>
+        </td>
+        <td>
+          <div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+          <div><span>&nbsp;</span><span>&nbsp;</span><span>&nbsp;</span><span>6</span><span>7</span></div>
+        </td>
+        <td>
+          <div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+          <div><span>&numsp;</span><span>&numsp;</span><span>&numsp;</span><span>6</span><span>7</span></div>
+        </td>
+      </tr>    
+      <tr class="description">
+        <td>
+          three<br>“normal”<br>spaces
+        </td>
+        <td>
+          three<br>non-breaking<br>spaces
+        </td>
+        <td>
+          three<br>figure<br>spaces
+        </td>
+      </tr>    
+    </table>
+    <br>
+    <br>
+  </body>
+</html>

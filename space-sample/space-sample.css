@@ -1,0 +1,44 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+table {
+  border: 0.25rem solid black;
+}
+td { 
+  border: 0.125rem solid black;
+} 
+.example {
+  font-size: 200%;
+} 
+.example div  {
+  position: relative;
+  padding-left: 0.25em;
+  padding-right: 0.25em;
+}  
+.example div:before {
+  position: absolute;
+  bottom: 0.25rem;
+  left: 0.125rem;
+  right: 0.125rem;
+  color: #808080;
+  height: 0.125rem; 
+  content: "";
+}
+.example td div {
+  display: flex; 
+}
+.example td div span {
+  display: block;
+}
+.description {
+  text-align: center;
+}
+#svg {
+  position: absolute;
+  top:0;
+  left: 0;
+  width: 100px;
+  height: 100px;
+  z-index: 5;
+  overflow: visible;
+} 
